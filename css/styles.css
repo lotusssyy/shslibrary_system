@@ -1,0 +1,288 @@
+/* General Reset */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    color: #333;
+    background-color: #f8f9fa;
+    min-height: 100vh;
+}
+
+/* Container Layout */
+.container {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    min-height: 100vh;
+}
+
+/* Sidebar */
+.sidebar {
+    width: 100%;
+    background: linear-gradient(180deg, #003366, #00509e);
+    color: white;
+    padding: 15px;
+    position: relative;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+}
+
+.sidebar-header {
+    display: flex;
+    align-items: center;
+    padding: 15px;
+}
+
+.sidebar-header h2 {
+    font-size: 1.5rem;
+    display: flex;
+    align-items: center;
+    color: #ffd700;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+    flex-grow: 1;
+}
+
+.school-logo {
+    height: 40px;
+    width: auto;
+    margin-right: 10px;
+}
+
+.sidebar nav a {
+    display: flex;
+    align-items: center;
+    text-decoration: none;
+    color: #ecf0f1;
+    font-size: 1rem;
+    padding: 10px;
+    margin-bottom: 15px; /* Increased from 5px to 15px for more spacing between items */
+    border-radius: 5px;
+    transition: all 0.3s ease;
+}
+
+.sidebar nav a.active, .sidebar nav a:hover {
+    background: linear-gradient(90deg, #ffd700, #ffc107);
+    color: #003366;
+    box-shadow: 0 3px 5px rgba(0, 0, 0, 0.2);
+}
+
+.sidebar .sub-menu {
+    list-style-type: none;
+    padding-left: 20px;
+    display: none;
+}
+
+.sidebar .sub-menu li a {
+    font-size: 0.9rem;
+    color: #bdc3c7;
+    padding: 8px 10px;
+    margin-bottom: 10px; /* Added spacing between submenu items */
+}
+
+.sidebar .sub-menu li a.active, .sidebar .sub-menu li a:hover {
+    background-color: #fce76c;
+    color: #003366;
+    border-radius: 5px;
+}
+
+.sidebar nav a i, .sidebar .sub-menu li a i {
+    margin-right: 8px;
+    font-size: 1rem;
+}
+
+.sidebar .logout {
+    margin-top: 30px; /* Increased from 15px to 30px for more spacing above Logout */
+}
+
+.sidebar .logout a {
+    text-align: center;
+    text-decoration: none;
+    background: linear-gradient(90deg, #ffd700, #ffc107);
+    color: #003366;
+    font-size: 1rem;
+    padding: 10px;
+    border-radius: 5px;
+    display: block;
+    transition: all 0.3s ease;
+}
+
+.sidebar .logout a:hover {
+    background: linear-gradient(90deg, #ffcc00, #e6b800);
+    color: white;
+}
+
+/* Main Content */
+.main-content {
+    flex: 1;
+    padding: 15px;
+    overflow-y: auto;
+}
+
+header h1 {
+    font-size: 1.5rem;
+    color: #003366;
+}
+
+header p {
+    font-size: 0.9rem;
+}
+
+/* Dashboard Cards */
+.dashboard-cards {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin: 15px 0;
+}
+
+.card {
+    flex: 1 1 100%;
+    background: linear-gradient(180deg, #003366, #00509e);
+    color: white;
+    padding: 15px;
+    border-radius: 8px;
+    text-align: center;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s ease, background-color 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    background: linear-gradient(90deg, #ffd700, #ffc107);
+    color: #003366;
+}
+
+/* Chart Section */
+.chart {
+    margin: 15px 0;
+    padding: 15px;
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    border-top: 4px solid #003366;
+}
+
+/* Table Styling */
+.styled-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    text-align: center;
+    border-radius: 5px;
+    overflow: hidden;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    margin: 15px 0;
+}
+
+.styled-table th, .styled-table td {
+    padding: 10px;
+    border: 1px solid #ddd;
+    font-size: 0.9rem;
+}
+
+.styled-table th {
+    background-color: #003366;
+    color: white;
+}
+
+.styled-table tr:nth-child(even) {
+    background-color: #f2f2f2;
+}
+
+.styled-table tr:hover {
+    background-color: #ffd700;
+    color: #003366;
+}
+
+/* Notices List */
+.notices-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin: 15px 0;
+}
+
+.notice-item {
+    background-color: #ffffff;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    padding: 15px;
+    border: 1px solid #003366;
+    transition: transform 0.2s ease;
+}
+
+.notice-item:hover {
+    transform: translateY(-5px);
+}
+
+/* Search Bar */
+.search-bar-container {
+    position: relative;
+    width: 100%;
+    margin: 15px 0;
+}
+
+.search-icon {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 1rem;
+    color: #aaa;
+}
+
+.search-bar {
+    width: 100%;
+    padding: 10px 10px 10px 35px;
+    font-size: 1rem;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    outline: none;
+    transition: border-color 0.2s ease;
+}
+
+.search-bar:focus {
+    border-color: #ffd700;
+}
+
+/* Media Queries for Desktop */
+@media (min-width: 768px) {
+    .container {
+        flex-direction: row;
+    }
+
+    .sidebar {
+        width: 250px;
+        height: 100vh;
+        position: fixed;
+    }
+
+    .main-content {
+        margin-left: 250px;
+        padding: 20px;
+    }
+
+    .dashboard-cards {
+        flex-wrap: nowrap;
+    }
+
+    .card {
+        flex: 1 1 30%;
+    }
+
+    header h1 {
+        font-size: 2rem;
+    }
+
+    header p {
+        font-size: 1rem;
+    }
+
+    .styled-table th, .styled-table td {
+        font-size: 1rem;
+    }
+}
