@@ -2,14 +2,14 @@
 header("Content-Type: text/plain");
 
 require 'vendor/autoload.php';
-require 'includes/db.php'; // Use JawsDB connection
+require 'includes/db.php';
 
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
-// Use PDO from db.php instead of mysqli
 if (empty($pdo)) {
-    die("Connection failed: PDO not initialized");
+    error_log("Connection failed: PDO not initialized");
+    die("ERROR: PDO_NOT_INITIALIZED");
 }
 
 $rfid_number = isset($_POST['rfid_number']) ? trim($_POST['rfid_number']) : '';
@@ -17,20 +17,19 @@ $action = isset($_POST['action']) ? trim($_POST['action']) : '';
 $barcode = isset($_POST['barcode']) ? trim($_POST['barcode']) : '';
 
 if (empty($rfid_number) || empty($action) || empty($barcode)) {
-    echo "MISSING_PARAMETERS";
+    error_log("Missing parameters: rfid_number=$rfid_number, action=$action, barcode=$barcode");
+    echo "ERROR: MISSING_PARAMETERS";
     exit();
 }
 
-$pdo->beginTransaction();
-
 try {
+    $pdo->beginTransaction();
     error_log("Starting transaction for RFID: $rfid_number, Action: $action, Barcode: $barcode");
 
     // Validate user
     $user_query = $pdo->prepare("SELECT id, email FROM users WHERE rfid_number = ?");
     $user_query->execute([$rfid_number]);
     $user = $user_query->fetch(PDO::FETCH_ASSOC);
-    
     if (!$user) {
         throw new Exception("USER_NOT_FOUND");
     }
@@ -41,7 +40,6 @@ try {
     $book_query = $pdo->prepare("SELECT id, genre, title, available, total_quantity FROM books WHERE barcode = ?");
     $book_query->execute([$barcode]);
     $book = $book_query->fetch(PDO::FETCH_ASSOC);
-    
     if (!$book) {
         throw new Exception("BOOK_NOT_FOUND");
     }
@@ -52,7 +50,7 @@ try {
     $total_quantity = $book['total_quantity'];
 
     // Calculate due date based on genre
-    $due_date = date('Y-m-d', strtotime("+7 days")); // Default 7 days
+    $due_date = date('Y-m-d', strtotime("+7 days"));
     switch ($book_genre) {
         case 'Fiction':
             $due_date = date('Y-m-d', strtotime("+14 days"));
@@ -83,7 +81,6 @@ try {
 
         $pdo->commit();
         echo "BORROW_SUCCESS";
-        
         notifyStudent($user_id, $user_email, $book_title, "borrowed", $due_date);
     } elseif ($action == "RETURN") {
         if ($book_available >= $total_quantity) {
@@ -97,18 +94,17 @@ try {
 
         $pdo->commit();
         echo "RETURN_SUCCESS";
-        
         notifyStudent($user_id, $user_email, $book_title, "returned", null);
     } else {
         throw new Exception("INVALID_ACTION");
     }
-
 } catch (Exception $e) {
     $pdo->rollBack();
-    echo $e->getMessage();
+    $error_message = "ERROR: " . $e->getMessage();
+    error_log($error_message);
+    echo $error_message;
 }
 
-// Notification function with PHPMailer
 function notifyStudent($user_id, $email, $book_title, $action, $due_date) {
     global $pdo;
 
@@ -126,7 +122,7 @@ function notifyStudent($user_id, $email, $book_title, $action, $due_date) {
         $mail->Host = 'smtp.gmail.com';
         $mail->SMTPAuth = true;
         $mail->Username = 'libraryuclm@gmail.com';
-        $mail->Password = 'crof wdsk aiky vays'; // Ensure this is your App Password
+        $mail->Password = 'crof wdsk aiky vays'; // Verify App Password
         $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
         $mail->Port = 587;
 
@@ -145,7 +141,8 @@ function notifyStudent($user_id, $email, $book_title, $action, $due_date) {
         $mail->send();
         error_log("Email sent to $email for $action of '$book_title'");
     } catch (Exception $e) {
-        error_log("Email could not be sent. Mailer Error: {$mail->ErrorInfo}");
+        error_log("Email failed: " . $e->getMessage());
+        // Don’t throw exception here to avoid breaking response
     }
 }
 ?>
