@@ -9,19 +9,21 @@ body {
     display: flex; /* Make body a flex container */
     justify-content: center; 
     align-items: center; 
-    background-color: #ecf0f1;
     font-family: Arial, sans-serif;
     min-height: 100vh; /* Ensure body covers at least the viewport height */
+    /* Add background image */
+    background-image: url('images/school_building.jpg'); /* Adjust filename as needed */
+    background-size: cover; /* Scale image to cover the entire area */
+    background-position: center; /* Center the image */
+    background-repeat: no-repeat; /* Prevent tiling */
 }
 
 .login-container {
-    /* Remove width: 100%; */ 
-    /* Remove any height settings */
-    /* Remove any display, justify-content, or align-items settings */
+    /* No changes needed here unless you want the background on this instead */
 }
 
 .login-box {
-    background-color: white;
+    background-color: rgba(255, 255, 255, 0.9); /* Slightly transparent white for contrast */
     padding: 30px 40px;
     border-radius: 10px;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
