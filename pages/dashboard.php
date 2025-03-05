@@ -83,9 +83,6 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
 </head>
 <body>
     <div class="container">
-        <!-- Hamburger Menu -->
-        <button class="hamburger"><i class="fas fa-bars"></i></button>
-
         <!-- Sidebar -->
         <div class="sidebar">
             <div class="sidebar-header">
@@ -301,12 +298,6 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
     </div>
 
     <script>
-        const hamburger = document.querySelector('.hamburger');
-        const sidebar = document.querySelector('.sidebar');
-        hamburger.addEventListener('click', () => {
-            sidebar.classList.toggle('active');
-        });
-
         const booksTab = document.getElementById('books-tab');
         const booksMenu = document.getElementById('books-menu');
         booksTab.addEventListener('click', function (e) {
