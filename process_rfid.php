@@ -1,25 +1,18 @@
 <?php
 header("Content-Type: text/plain");
-
-require 'vendor/autoload.php';
 require 'includes/db.php';
 
-use PHPMailer\PHPMailer\PHPMailer;
-use PHPMailer\PHPMailer\Exception;
-
-if (empty($pdo)) {
-    error_log("Connection failed: PDO not initialized");
-    die("ERROR: PDO_NOT_INITIALIZED");
-}
+error_reporting(E_ALL);
+ini_set('display_errors', 1); // Enable for debugging
 
 $rfid_number = isset($_POST['rfid_number']) ? trim($_POST['rfid_number']) : '';
 $action = isset($_POST['action']) ? trim($_POST['action']) : '';
 $barcode = isset($_POST['barcode']) ? trim($_POST['barcode']) : '';
 
-if (empty($rfid_number) || empty($action) || empty($barcode)) {
+if (empty($rfid_number) || empty($action) || empty($barcode) || !in_array(strtoupper($action), ['BORROW', 'RETURN'])) {
     error_log("Missing parameters: rfid_number=$rfid_number, action=$action, barcode=$barcode");
-    echo "ERROR: MISSING_PARAMETERS";
-    exit();
+    echo "MISSING_PARAMETERS";
+    exit;
 }
 
 try {
@@ -51,25 +44,25 @@ try {
 
     // Calculate due date based on genre
     $due_date = date('Y-m-d', strtotime("+7 days"));
-    switch ($book_genre) {
-        case 'Fiction':
+    switch (strtoupper($book_genre)) {
+        case 'FICTION':
             $due_date = date('Y-m-d', strtotime("+14 days"));
             break;
-        case 'Non-Fiction':
+        case 'NON-FICTION':
             $due_date = date('Y-m-d', strtotime("+21 days"));
             break;
-        case 'Science':
+        case 'SCIENCE':
             $due_date = date('Y-m-d', strtotime("+10 days"));
             break;
-        case 'History':
+        case 'HISTORY':
             $due_date = date('Y-m-d', strtotime("+14 days"));
             break;
-        case 'Biography':
+        case 'BIOGRAPHY':
             $due_date = date('Y-m-d', strtotime("+7 days"));
             break;
     }
 
-    if ($action == "BORROW") {
+    if (strtoupper($action) == "BORROW") {
         if ($book_available <= 0) {
             throw new Exception("NO_BOOKS_AVAILABLE");
         }
@@ -82,15 +75,26 @@ try {
         $pdo->commit();
         echo "BORROW_SUCCESS";
         notifyStudent($user_id, $user_email, $book_title, "borrowed", $due_date);
-    } elseif ($action == "RETURN") {
+    } elseif (strtoupper($action) == "RETURN") {
         if ($book_available >= $total_quantity) {
             throw new Exception("BOOK_ALREADY_RETURNED");
         }
+
+        // Check if a BORROW transaction exists
+        $check_borrow = $pdo->prepare("SELECT id FROM transactions WHERE user_id = ? AND book_id = ? AND action = 'BORROW' AND returned_date IS NULL");
+        $check_borrow->execute([$user_id, $book_id]);
+        $borrow_record = $check_borrow->fetch(PDO::FETCH_ASSOC);
+        if (!$borrow_record) {
+            throw new Exception("NO_BORROW_RECORD");
+        }
+
+        // Update the book availability
         $update_book = $pdo->prepare("UPDATE books SET available = available + 1 WHERE id = ?");
         $update_book->execute([$book_id]);
 
-        $trans_query = $pdo->prepare("INSERT INTO transactions (user_id, book_id, action) VALUES (?, ?, 'RETURN')");
-        $trans_query->execute([$user_id, $book_id]);
+        // Update the existing BORROW transaction with returned_date
+        $trans_query = $pdo->prepare("UPDATE transactions SET returned_date = NOW() WHERE id = ?");
+        $trans_query->execute([$borrow_record['id']]);
 
         $pdo->commit();
         echo "RETURN_SUCCESS";
@@ -100,8 +104,8 @@ try {
     }
 } catch (Exception $e) {
     $pdo->rollBack();
-    $error_message = "ERROR: " . $e->getMessage();
-    error_log($error_message);
+    $error_message = $e->getMessage();
+    error_log("Transaction failed: $error_message");
     echo $error_message;
 }
 
@@ -110,7 +114,7 @@ function notifyStudent($user_id, $email, $book_title, $action, $due_date) {
 
     error_log("Sending notification to $email for $action of '$book_title'");
 
-    $message = $action === "borrowed" 
+    $message = ($action === "borrowed") 
         ? "You have borrowed '$book_title'. Due date: $due_date."
         : "You have returned '$book_title'.";
     $notice_query = $pdo->prepare("INSERT INTO notices (user_id, message, created_at) VALUES (?, ?, NOW())");
@@ -129,10 +133,10 @@ function notifyStudent($user_id, $email, $book_title, $action, $due_date) {
         $mail->setFrom('libraryuclm@gmail.com', 'SHS Library System');
         $mail->addAddress($email);
 
-        $subject = $action === "borrowed" 
+        $subject = ($action === "borrowed") 
             ? "Book Borrowed: $book_title"
             : "Book Returned: $book_title";
-        $body = $action === "borrowed" 
+        $body = ($action === "borrowed") 
             ? "Dear Student,\n\nYou have successfully borrowed '$book_title'. Please return it by $due_date.\n\nRegards,\nSHS Library System"
             : "Dear Student,\n\nYou have successfully returned '$book_title'.\n\nRegards,\nSHS Library System";
         $mail->Subject = $subject;
@@ -142,7 +146,6 @@ function notifyStudent($user_id, $email, $book_title, $action, $due_date) {
         error_log("Email sent to $email for $action of '$book_title'");
     } catch (Exception $e) {
         error_log("Email failed: " . $e->getMessage());
-        // Don’t throw exception here to avoid breaking response
     }
 }
 ?>

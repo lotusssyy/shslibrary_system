@@ -16,7 +16,7 @@ $query_today = $pdo->prepare("SELECT t.user_id, u.email, b.title, t.due_date
                              JOIN users u ON t.user_id = u.id 
                              JOIN books b ON t.book_id = b.id 
                              WHERE t.action = 'BORROW' AND t.due_date = DATE(NOW()) 
-                             AND t.returned_at IS NULL");
+                             AND t.returned_date IS NULL");
 $query_today->execute();
 $due_today = $query_today->fetchAll(PDO::FETCH_ASSOC);
 
@@ -26,7 +26,7 @@ $query_tomorrow = $pdo->prepare("SELECT t.user_id, u.email, b.title, t.due_date
                                 JOIN users u ON t.user_id = u.id 
                                 JOIN books b ON t.book_id = b.id 
                                 WHERE t.action = 'BORROW' AND t.due_date = DATE(NOW() + INTERVAL 1 DAY) 
-                                AND t.returned_at IS NULL");
+                                AND t.returned_date IS NULL");
 $query_tomorrow->execute();
 $due_tomorrow = $query_tomorrow->fetchAll(PDO::FETCH_ASSOC);
 
@@ -36,9 +36,12 @@ $query_overdue = $pdo->prepare("SELECT t.user_id, u.email, b.title, t.due_date
                                JOIN users u ON t.user_id = u.id 
                                JOIN books b ON t.book_id = b.id 
                                WHERE t.action = 'BORROW' AND t.due_date < DATE(NOW()) 
-                               AND t.returned_at IS NULL");
+                               AND t.returned_date IS NULL");
 $query_overdue->execute();
 $overdue_books = $query_overdue->fetchAll(PDO::FETCH_ASSOC);
+
+// Debug: Log the number of records found
+error_log("Due today: " . count($due_today) . ", Due tomorrow: " . count($due_tomorrow) . ", Overdue: " . count($overdue_books));
 
 // Process notifications for today
 foreach ($due_today as $transaction) {
@@ -50,8 +53,8 @@ foreach ($due_today as $transaction) {
     $message = "Your borrowed book '$book_title' is due today ($due_date). Please return it to avoid penalties.";
     $notice_query = $pdo->prepare("INSERT INTO notices (user_id, message, created_at) VALUES (?, ?, NOW())");
     $notice_query->execute([$user_id, $message]);
-
     sendEmailNotification($email, $book_title, $due_date, "due today");
+    error_log("Notified $email for book '$book_title' due today");
 }
 
 // Process reminders for tomorrow
@@ -64,8 +67,8 @@ foreach ($due_tomorrow as $transaction) {
     $message = "Reminder: Your borrowed book '$book_title' is due tomorrow ($due_date). Please plan to return it.";
     $notice_query = $pdo->prepare("INSERT INTO notices (user_id, message, created_at) VALUES (?, ?, NOW())");
     $notice_query->execute([$user_id, $message]);
-
     sendEmailNotification($email, $book_title, $due_date, "due tomorrow");
+    error_log("Reminded $email for book '$book_title' due tomorrow");
 }
 
 // Process notifications for overdue books
@@ -79,8 +82,8 @@ foreach ($overdue_books as $transaction) {
     $message = "Your borrowed book '$book_title' is overdue since $due_date ($overdue_days day(s) late). Please return it immediately to avoid penalties.";
     $notice_query = $pdo->prepare("INSERT INTO notices (user_id, message, created_at) VALUES (?, ?, NOW())");
     $notice_query->execute([$user_id, $message]);
-
     sendEmailNotification($email, $book_title, $due_date, "overdue");
+    error_log("Notified $email for overdue book '$book_title' ($overdue_days days late)");
 }
 
 function sendEmailNotification($email, $book_title, $due_date, $context) {
