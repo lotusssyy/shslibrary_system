@@ -10,6 +10,38 @@ use PHPMailer\PHPMailer\Exception;
 error_reporting(E_ALL);
 ini_set('display_errors', 1); // Enable for debugging
 
+// Set timezone to Philippine Time (PHT, UTC+8)
+date_default_timezone_set('Asia/Manila');
+
+// Get current time in PHT
+$currentHour = (int) date('H'); // Hour in 24-hour format (0-23)
+$currentMinute = (int) date('i'); // Minutes (0-59)
+$currentDate = date('Y-m-d');
+error_log("Current PHT: " . date('Y-m-d H:i:s'));
+
+// Define target notification times in PHT (24-hour format)
+$targetTimes = [6, 17, 0]; // 6:00 AM, 5:00 PM, 12:00 AM
+
+// Check if current time matches one of the target times (within a 10-minute window)
+$isTargetTime = false;
+foreach ($targetTimes as $targetHour) {
+    if ($currentHour === $targetHour && $currentMinute <= 10) { // Run within first 10 minutes of the hour
+        $isTargetTime = true;
+        break;
+    }
+    // Special case for 12:00 AM (midnight transition)
+    if ($targetHour === 0 && $currentHour === 23 && $currentMinute >= 50) {
+        $isTargetTime = true; // Allow late execution for midnight
+    }
+}
+
+if (!$isTargetTime) {
+    error_log("Not a target notification time. Exiting.");
+    exit; // Exit if not one of the target times
+}
+
+error_log("Sending notifications at " . date('Y-m-d H:i:s') . " PHT");
+
 // Query for books due today
 $query_today = $pdo->prepare("SELECT t.user_id, u.email, b.title, t.due_date 
                              FROM transactions t 
