@@ -114,6 +114,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_book']) && $user_
     }
 }
 
+// Handle resetting transactions (admin only)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reset_transactions']) && $user_role === 'admin') {
+    try {
+        // Start a transaction to ensure data consistency
+        $pdo->beginTransaction();
+
+        // Truncate the transactions table to reset all records
+        $pdo->exec("TRUNCATE TABLE transactions");
+
+        // Commit the transaction
+        $pdo->commit();
+
+        $success_message = "All transactions have been reset successfully.";
+        error_log("Admin reset all transactions on " . date('Y-m-d H:i:s'));
+    } catch (PDOException $e) {
+        // Roll back the transaction on error
+        $pdo->rollBack();
+        $error_message = "Error resetting transactions: " . $e->getMessage();
+        error_log($error_message);
+    }
+}
+
 $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
 ?>
 
@@ -133,7 +155,7 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
             margin-top: 10px;
         }
         /* Fallback in case admin-dashboard.css doesn't load */
-        .remove-btn {
+        .remove-btn, .reset-btn {
             background-color: #003366;
             color: white;
             border: none;
@@ -148,16 +170,16 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
             vertical-align: middle;
         }
 
-        .remove-btn:hover {
+        .remove-btn:hover, .reset-btn:hover {
             background-color: #ffd700;
         }
 
-        .remove-btn i {
+        .remove-btn i, .reset-btn i {
             margin-right: 0;
         }
 
         @media (min-width: 768px) {
-            .remove-btn {
+            .remove-btn, .reset-btn {
                 font-size: 1rem;
             }
         }
@@ -170,6 +192,27 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
             background-color: #d4edda;
             color: #28a745;
             font-size: 0.9rem;
+        }
+
+        .transaction-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        .transaction-table th, .transaction-table td {
+            padding: 10px;
+            text-align: left;
+            border: 1px solid #ddd;
+        }
+
+        .transaction-table th {
+            background-color: #003366;
+            color: white;
+        }
+
+        .transaction-table tr:nth-child(even) {
+            background-color: #f2f2f2;
         }
     </style>
 </head>
@@ -199,6 +242,7 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                         <li><a href="dashboard.php?tab=add_student" class="<?= $active_tab === 'add_student' ? 'active' : '' ?>"><i class="fas fa-user-plus"></i> <span>Add Student</span></a></li>
                         <li><a href="dashboard.php?tab=students" class="<?= $active_tab === 'students' ? 'active' : '' ?>"><i class="fas fa-list"></i> <span>Registered Students</span></a></li>
                     </ul>
+                    <a href="#" id="transactions-tab" class="<?= $active_tab === 'transactions' ? 'active' : '' ?>"><i class="fas fa-exchange-alt"></i> <span>Transactions</span></a>
                 <?php endif; ?>
                 <a href="notices.php"><i class="fas fa-bell"></i> <span>Notices</span></a>
                 <a href="profile.php"><i class="fas fa-user"></i> <span>Profile</span></a>
@@ -211,7 +255,7 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
         <!-- Main Content -->
         <div class="main-content">
             <header>
-                <h1><?php echo ucfirst($active_tab === 'dashboard' ? 'Dashboard' : ($active_tab === 'add_student' ? 'Add Student' : ($active_tab === 'add_book' ? 'Add Book' : ($active_tab === 'students' ? 'Registered Students' : 'Books')))); ?></h1>
+                <h1><?php echo ucfirst($active_tab === 'dashboard' ? 'Dashboard' : ($active_tab === 'add_student' ? 'Add Student' : ($active_tab === 'add_book' ? 'Add Book' : ($active_tab === 'students' ? 'Registered Students' : ($active_tab === 'transactions' ? 'Transactions' : 'Books'))))); ?></h1>
                 <p>Welcome back, <?php echo htmlspecialchars($user['first_name'] . ' ' . $user['last_name']); ?>!</p>
             </header>
 
@@ -355,6 +399,48 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                     </section>
                 <?php endif; ?>
 
+                <?php if ($active_tab === 'transactions' && $user_role === 'admin'): ?>
+                    <section class="admin-section">
+                        <h2>Transactions</h2>
+                        <form method="POST" style="margin-bottom: 15px; display:inline;">
+                            <button type="submit" name="reset_transactions" class="reset-btn" onclick="return confirm('Are you sure you want to reset all transactions? This action cannot be undone.');"><i class="fas fa-undo"></i> Reset Transactions</button>
+                        </form>
+                        <?php
+                        $query = $pdo->query("SELECT t.id, u.student_id, b.title, t.transaction_date, t.status FROM transactions t 
+                                             LEFT JOIN users u ON t.user_id = u.id 
+                                             LEFT JOIN books b ON t.book_id = b.id 
+                                             ORDER BY t.transaction_date DESC");
+                        $transactions = $query->fetchAll(PDO::FETCH_ASSOC);
+                        if (empty($transactions)) {
+                            echo "<p>No transactions recorded.</p>";
+                        } else {
+                        ?>
+                        <table class="transaction-table">
+                            <thead>
+                                <tr>
+                                    <th>Transaction ID</th>
+                                    <th>Student ID</th>
+                                    <th>Book Title</th>
+                                    <th>Transaction Date</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($transactions as $transaction): ?>
+                                    <tr>
+                                        <td><?php echo htmlspecialchars($transaction['id']); ?></td>
+                                        <td><?php echo htmlspecialchars($transaction['student_id'] ?? 'N/A'); ?></td>
+                                        <td><?php echo htmlspecialchars($transaction['title'] ?? 'N/A'); ?></td>
+                                        <td><?php echo htmlspecialchars($transaction['transaction_date'] ?? 'N/A'); ?></td>
+                                        <td><?php echo htmlspecialchars($transaction['status'] ?? 'N/A'); ?></td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                        <?php } ?>
+                    </section>
+                <?php endif; ?>
+
                 <?php if ($active_tab === 'add_book'): ?>
                     <section class="admin-section">
                         <h2>Add Book</h2>
@@ -410,6 +496,14 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
             e.preventDefault();
             studentsMenu.style.display = studentsMenu.style.display === 'block' ? 'none' : 'block';
         });
+
+        const transactionsTab = document.getElementById('transactions-tab');
+        if (transactionsTab) {
+            transactionsTab.addEventListener('click', function (e) {
+                e.preventDefault();
+                window.location.href = 'dashboard.php?tab=transactions';
+            });
+        }
         <?php endif; ?>
 
         const transactionsChart = document.getElementById('transactionsChart');
