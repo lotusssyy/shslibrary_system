@@ -124,17 +124,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reset_transactions'])
         $query = $pdo->prepare("DELETE FROM transactions");
         $query->execute();
 
-        // Optional: Reset the auto-increment counter (if needed)
-        $pdo->exec("ALTER TABLE transactions AUTO_INCREMENT = 1");
-
         // Commit the transaction
         $pdo->commit();
 
         $success_message = "All transactions have been reset successfully.";
         error_log("Admin reset all transactions on " . date('Y-m-d H:i:s'));
     } catch (PDOException $e) {
-        // Roll back the transaction on error
-        $pdo->rollBack();
+        // Roll back the transaction only if it was started
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
         $error_message = "Error resetting transactions: " . $e->getMessage();
         error_log($error_message);
     }
@@ -410,11 +409,18 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                             <button type="submit" name="reset_transactions" class="reset-btn" onclick="return confirm('Are you sure you want to reset all transactions? This action cannot be undone.');"><i class="fas fa-undo"></i> Reset Transactions</button>
                         </form>
                         <?php
-                        $query = $pdo->query("SELECT t.id, u.student_id, b.title, t.transaction_date, t.status FROM transactions t 
-                                             LEFT JOIN users u ON t.user_id = u.id 
-                                             LEFT JOIN books b ON t.book_id = b.id 
-                                             ORDER BY t.transaction_date DESC");
-                        $transactions = $query->fetchAll(PDO::FETCH_ASSOC);
+                        try {
+                            $query = $pdo->query("SELECT t.id, u.student_id, b.title, t.transaction_date, t.status 
+                                                FROM transactions t 
+                                                LEFT JOIN users u ON t.user_id = u.id 
+                                                LEFT JOIN books b ON t.book_id = b.id 
+                                                ORDER BY t.id DESC"); // Fallback to id if transaction_date is missing
+                            $transactions = $query->fetchAll(PDO::FETCH_ASSOC);
+                        } catch (PDOException $e) {
+                            $error_message = "Error loading transactions: " . $e->getMessage();
+                            $transactions = []; // Default to empty array if query fails
+                            error_log($error_message);
+                        }
                         if (empty($transactions)) {
                             echo "<p>No transactions recorded.</p>";
                         } else {
