@@ -62,36 +62,52 @@ $available_books = $query->fetchAll();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Available Books - SHS Library</title>
     <link rel="stylesheet" href="../css/styles.css">
-    <link rel="stylesheet" href="../css/admin-dashboard.css"> <!-- Ensure this path is correct -->
+    <link rel="stylesheet" href="../css/admin-dashboard.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
     <style>
-        /* Fallback in case admin-dashboard.css doesn't load */
+        /* Table styling to match borrowed_books.php */
+        .styled-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        .styled-table th, .styled-table td {
+            padding: 10px;
+            text-align: left;
+            border: 1px solid #ddd;
+        }
+        .styled-table th {
+            background-color: #003366;
+            color: white;
+        }
+        .styled-table tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+
+        /* Button styling to match borrowed_books.php */
         .remove-btn {
-            background-color: #003366; /* Blue to match dashboard.php */
-            color: white; /* White text */
-            border: none; /* Remove default border */
-            padding: 8px 16px; /* Size matches dashboard.php */
-            border-radius: 3px; /* Rounded corners */
-            cursor: pointer; /* Hand cursor on hover */
-            display: inline-flex; /* Use inline-flex to keep it centered */
-            align-items: center; /* Center items vertically */
-            gap: 8px; /* Gap for larger size */
-            transition: background-color 0.3s ease; /* Smooth hover effect */
-            font-size: 0.9rem; /* Match table font size */
-            vertical-align: middle; /* Ensure vertical centering */
+            background-color: #003366;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 3px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: background-color 0.3s ease;
+            font-size: 0.9rem;
+            vertical-align: middle;
         }
-
         .remove-btn:hover {
-            background-color: #ffd700; /* Yellow hover to match admin button hover */
+            background-color: #ffd700;
         }
-
         .remove-btn i {
-            margin-right: 0; /* Remove margin for tighter spacing with adjusted padding */
+            margin-right: 0;
         }
-
         @media (min-width: 768px) {
             .remove-btn {
-                font-size: 1rem; /* Match larger font size on desktop */
+                font-size: 1rem;
             }
         }
 
@@ -104,6 +120,26 @@ $available_books = $query->fetchAll();
             background-color: #d4edda;
             color: #28a745;
             font-size: 0.9rem;
+        }
+
+        /* Search bar styling (unchanged) */
+        .search-bar-container {
+            position: relative;
+            margin-bottom: 20px;
+        }
+        .search-icon {
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #666;
+        }
+        .search-bar {
+            width: 100%;
+            padding: 10px 10px 10px 35px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 1rem;
         }
     </style>
 </head>
@@ -165,7 +201,7 @@ $available_books = $query->fetchAll();
                     <i class="fas fa-search search-icon"></i>
                     <input type="text" id="search-bar" class="search-bar" placeholder="Search for books..." onkeyup="filterBooks()">
                 </div>
-                <table id="books-table" class="student-table">
+                <table id="books-table" class="styled-table">
                     <thead>
                         <tr>
                             <th>Title</th>
