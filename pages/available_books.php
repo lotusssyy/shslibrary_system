@@ -35,8 +35,28 @@ $available_books = $query->fetchAll();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Available Books - SHS Library</title>
     <link rel="stylesheet" href="../css/styles.css">
-    <link rel="stylesheet" href="../css/admin-dashboard.css"> <!-- Added to ensure consistent styling -->
+    <link rel="stylesheet" href="../css/admin-dashboard.css"> <!-- Ensure this path is correct -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+    <style>
+        .remove-btn {
+            background-color: #e74c3c; /* Red background */
+            color: white; /* White text */
+            border: none; /* Remove default border */
+            padding: 5px 10px; /* Consistent padding */
+            border-radius: 3px; /* Rounded corners */
+            cursor: pointer; /* Hand cursor on hover */
+            display: flex; /* Align icon and text */
+            align-items: center; /* Center items vertically */
+            gap: 5px; /* Space between icon and text */
+            transition: background-color 0.3s; /* Smooth hover effect */
+        }
+        .remove-btn:hover {
+            background-color: #c0392b; /* Darker red on hover */
+        }
+        .remove-btn i {
+            margin-right: 5px; /* Space between icon and text */
+        }
+    </style>
 </head>
 <body>
     <div class="container">
