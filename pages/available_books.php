@@ -38,21 +38,24 @@ $available_books = $query->fetchAll();
     <link rel="stylesheet" href="../css/admin-dashboard.css"> <!-- Ensure this path is correct -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
     <style>
+        /* Fallback in case admin-dashboard.css doesn't load */
         .remove-btn {
-            background-color: #e74c3c; /* Red background */
+            background-color: #003366; /* Blue to match dashboard.php */
             color: white; /* White text */
             border: none; /* Remove default border */
-            padding: 5px 10px; /* Consistent padding */
+            padding: 5px 10px; /* Compact padding */
             border-radius: 3px; /* Rounded corners */
             cursor: pointer; /* Hand cursor on hover */
             display: flex; /* Align icon and text */
             align-items: center; /* Center items vertically */
             gap: 5px; /* Space between icon and text */
-            transition: background-color 0.3s; /* Smooth hover effect */
+            transition: background-color 0.3s ease; /* Smooth hover effect */
         }
+
         .remove-btn:hover {
-            background-color: #c0392b; /* Darker red on hover */
+            background-color: #ffd700; /* Yellow hover to match admin button hover */
         }
+
         .remove-btn i {
             margin-right: 5px; /* Space between icon and text */
         }
@@ -110,7 +113,7 @@ $available_books = $query->fetchAll();
                     <i class="fas fa-search search-icon"></i>
                     <input type="text" id="search-bar" class="search-bar" placeholder="Search for books..." onkeyup="filterBooks()">
                 </div>
-                <table id="books-table" class="styled-table">
+                <table id="books-table" class="student-table">
                     <thead>
                         <tr>
                             <th>Title</th>
