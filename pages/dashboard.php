@@ -217,6 +217,11 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
         .transaction-table tr:nth-child(even) {
             background-color: #f2f2f2;
         }
+
+        /* Adjust placement of "No transactions recorded" text */
+        .admin-section p.no-transactions {
+            margin-top: 20px; /* Increase this value to lower it further (e.g., 30px, 40px) */
+        }
     </style>
 </head>
 <body>
@@ -422,7 +427,7 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                             error_log($error_message);
                         }
                         if (empty($transactions)) {
-                            echo "<p>No transactions recorded.</p>";
+                            echo "<p class='no-transactions'>No transactions recorded.</p>";
                         } else {
                         ?>
                         <table class="transaction-table">
