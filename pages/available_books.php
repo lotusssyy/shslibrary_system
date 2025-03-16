@@ -168,6 +168,11 @@ $available_books = $query->fetchAll();
             border-radius: 4px;
             font-size: 1rem;
         }
+
+        /* Reset button container */
+        .reset-button-container {
+            margin-top: 15px;
+        }
     </style>
 </head>
 <body>
@@ -224,11 +229,6 @@ $available_books = $query->fetchAll();
             <?php endif; ?>
 
             <section>
-                <?php if ($user_role === 'admin'): ?>
-                    <form method="POST" style="margin-bottom: 15px; display:inline;">
-                        <button type="submit" name="reset_books" class="reset-btn" onclick="return confirm('Are you sure you want to remove all books? This action cannot be undone.');"><i class="fas fa-undo"></i> Reset Books</button>
-                    </form>
-                <?php endif; ?>
                 <div class="search-bar-container">
                     <i class="fas fa-search search-icon"></i>
                     <input type="text" id="search-bar" class="search-bar" placeholder="Search for books..." onkeyup="filterBooks()">
@@ -270,6 +270,13 @@ $available_books = $query->fetchAll();
                         <?php endif; ?>
                     </tbody>
                 </table>
+                <?php if ($user_role === 'admin'): ?>
+                    <div class="reset-button-container">
+                        <form method="POST" style="display:inline;">
+                            <button type="submit" name="reset_books" class="reset-btn" onclick="return confirm('Are you sure you want to remove all books? This action cannot be undone.');"><i class="fas fa-undo"></i> Reset Books</button>
+                        </form>
+                    </div>
+                <?php endif; ?>
             </section>
         </div>
     </div>
