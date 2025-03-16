@@ -120,8 +120,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reset_transactions'])
         // Start a transaction to ensure data consistency
         $pdo->beginTransaction();
 
-        // Truncate the transactions table to reset all records
-        $pdo->exec("TRUNCATE TABLE transactions");
+        // Delete all records from the transactions table
+        $query = $pdo->prepare("DELETE FROM transactions");
+        $query->execute();
+
+        // Optional: Reset the auto-increment counter (if needed)
+        $pdo->exec("ALTER TABLE transactions AUTO_INCREMENT = 1");
 
         // Commit the transaction
         $pdo->commit();
