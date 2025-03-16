@@ -143,9 +143,9 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
             <?php if ($active_tab === 'dashboard'): ?>
                 <section class="dashboard-cards">
                     <div class="card">
-                        <h3>Total Users</h3>
+                        <h3>Total Students</h3>
                         <p><?php
-                            $query = $pdo->query("SELECT COUNT(*) FROM users");
+                            $query = $pdo->query("SELECT COUNT(*) FROM users WHERE role = 'student'");
                             echo $query->fetchColumn();
                         ?></p>
                     </div>
