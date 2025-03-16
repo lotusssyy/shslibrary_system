@@ -140,7 +140,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reset_transactions'])
 }
 
 $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
-$show_borrowed = isset($_GET['view']) && $_GET['view'] === 'borrowed';
 ?>
 
 <!DOCTYPE html>
@@ -198,52 +197,30 @@ $show_borrowed = isset($_GET['view']) && $_GET['view'] === 'borrowed';
             font-size: 0.9rem;
         }
 
-        .transaction-table, .borrowed-table {
+        .transaction-table {
             width: 100%;
             border-collapse: collapse;
             margin-top: 15px;
         }
 
-        .transaction-table th, .transaction-table td, .borrowed-table th, .borrowed-table td {
+        .transaction-table th, .transaction-table td {
             padding: 10px;
             text-align: left;
             border: 1px solid #ddd;
         }
 
-        .transaction-table th, .borrowed-table th {
+        .transaction-table th {
             background-color: #003366;
             color: white;
         }
 
-        .transaction-table tr:nth-child(even), .borrowed-table tr:nth-child(even) {
+        .transaction-table tr:nth-child(even) {
             background-color: #f2f2f2;
         }
 
         /* Adjust placement of "No transactions recorded" text */
         .admin-section p.no-transactions {
-            margin-top: 20px;
-        }
-
-        /* Style for view toggle buttons */
-        .view-toggle {
-            margin-bottom: 15px;
-        }
-        .view-toggle button {
-            background-color: #003366;
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 3px;
-            cursor: pointer;
-            margin-right: 10px;
-            transition: background-color 0.3s ease;
-        }
-        .view-toggle button.active {
-            background-color: #ffd700;
-            color: #003366;
-        }
-        .view-toggle button:hover {
-            background-color: #ffd700;
+            margin-top: 20px; /* Increase this value to lower it further (e.g., 30px, 40px) */
         }
     </style>
 </head>
@@ -436,98 +413,46 @@ $show_borrowed = isset($_GET['view']) && $_GET['view'] === 'borrowed';
                         <form method="POST" style="margin-bottom: 15px; display:inline;">
                             <button type="submit" name="reset_transactions" class="reset-btn" onclick="return confirm('Are you sure you want to reset all transactions? This action cannot be undone.');"><i class="fas fa-undo"></i> Reset Transactions</button>
                         </form>
-                        <!-- View toggle buttons -->
-                        <div class="view-toggle">
-                            <button onclick="window.location.href='dashboard.php?tab=transactions'" class="<?= !$show_borrowed ? 'active' : '' ?>">All Transactions</button>
-                            <button onclick="window.location.href='dashboard.php?tab=transactions&view=borrowed'" class="<?= $show_borrowed ? 'active' : '' ?>">Borrowed Books</button>
-                        </div>
-
                         <?php
-                        if (!$show_borrowed) {
-                            // Display all transactions
-                            try {
-                                $query = $pdo->query("SELECT t.id, u.student_id, b.title, t.transaction_date, t.status 
-                                                    FROM transactions t 
-                                                    LEFT JOIN users u ON t.user_id = u.id 
-                                                    LEFT JOIN books b ON t.book_id = b.id 
-                                                    ORDER BY t.id DESC");
-                                $transactions = $query->fetchAll(PDO::FETCH_ASSOC);
-                            } catch (PDOException $e) {
-                                $error_message = "Error loading transactions: " . $e->getMessage();
-                                $transactions = [];
-                                error_log($error_message);
-                            }
-                            if (empty($transactions)) {
-                                echo "<p class='no-transactions'>No transactions recorded.</p>";
-                            } else {
-                            ?>
-                            <table class="transaction-table">
-                                <thead>
-                                    <tr>
-                                        <th>Transaction ID</th>
-                                        <th>Student ID</th>
-                                        <th>Book Title</th>
-                                        <th>Transaction Date</th>
-                                        <th>Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php foreach ($transactions as $transaction): ?>
-                                        <tr>
-                                            <td><?php echo htmlspecialchars($transaction['id']); ?></td>
-                                            <td><?php echo htmlspecialchars($transaction['student_id'] ?? 'N/A'); ?></td>
-                                            <td><?php echo htmlspecialchars($transaction['title'] ?? 'N/A'); ?></td>
-                                            <td><?php echo htmlspecialchars($transaction['transaction_date'] ?? 'N/A'); ?></td>
-                                            <td><?php echo htmlspecialchars($transaction['status'] ?? 'N/A'); ?></td>
-                                        </tr>
-                                    <?php endforeach; ?>
-                                </tbody>
-                            </table>
-                            <?php
-                            }
-                        } else {
-                            // Display only borrowed books
-                            try {
-                                $query = $pdo->query("SELECT t.id, u.student_id, b.title, t.transaction_date 
-                                                    FROM transactions t 
-                                                    LEFT JOIN users u ON t.user_id = u.id 
-                                                    LEFT JOIN books b ON t.book_id = b.id 
-                                                    WHERE t.status = 'borrowed' 
-                                                    ORDER BY t.id DESC");
-                                $borrowed_books = $query->fetchAll(PDO::FETCH_ASSOC);
-                            } catch (PDOException $e) {
-                                $error_message = "Error loading borrowed books: " . $e->getMessage();
-                                $borrowed_books = [];
-                                error_log($error_message);
-                            }
-                            if (empty($borrowed_books)) {
-                                echo "<p class='no-transactions'>No borrowed books recorded.</p>";
-                            } else {
-                            ?>
-                            <table class="borrowed-table">
-                                <thead>
-                                    <tr>
-                                        <th>Transaction ID</th>
-                                        <th>Student ID</th>
-                                        <th>Book Title</th>
-                                        <th>Transaction Date</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php foreach ($borrowed_books as $book): ?>
-                                        <tr>
-                                            <td><?php echo htmlspecialchars($book['id']); ?></td>
-                                            <td><?php echo htmlspecialchars($book['student_id'] ?? 'N/A'); ?></td>
-                                            <td><?php echo htmlspecialchars($book['title'] ?? 'N/A'); ?></td>
-                                            <td><?php echo htmlspecialchars($book['transaction_date'] ?? 'N/A'); ?></td>
-                                        </tr>
-                                    <?php endforeach; ?>
-                                </tbody>
-                            </table>
-                            <?php
-                            }
+                        try {
+                            $query = $pdo->query("SELECT t.id, u.student_id, b.title, t.transaction_date, t.status 
+                                                FROM transactions t 
+                                                LEFT JOIN users u ON t.user_id = u.id 
+                                                LEFT JOIN books b ON t.book_id = b.id 
+                                                ORDER BY t.id DESC"); // Fallback to id if transaction_date is missing
+                            $transactions = $query->fetchAll(PDO::FETCH_ASSOC);
+                        } catch (PDOException $e) {
+                            $error_message = "Error loading transactions: " . $e->getMessage();
+                            $transactions = []; // Default to empty array if query fails
+                            error_log($error_message);
                         }
+                        if (empty($transactions)) {
+                            echo "<p class='no-transactions'>No transactions recorded.</p>";
+                        } else {
                         ?>
+                        <table class="transaction-table">
+                            <thead>
+                                <tr>
+                                    <th>Transaction ID</th>
+                                    <th>Student ID</th>
+                                    <th>Book Title</th>
+                                    <th>Transaction Date</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($transactions as $transaction): ?>
+                                    <tr>
+                                        <td><?php echo htmlspecialchars($transaction['id']); ?></td>
+                                        <td><?php echo htmlspecialchars($transaction['student_id'] ?? 'N/A'); ?></td>
+                                        <td><?php echo htmlspecialchars($transaction['title'] ?? 'N/A'); ?></td>
+                                        <td><?php echo htmlspecialchars($transaction['transaction_date'] ?? 'N/A'); ?></td>
+                                        <td><?php echo htmlspecialchars($transaction['status'] ?? 'N/A'); ?></td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                        <?php } ?>
                     </section>
                 <?php endif; ?>
 
