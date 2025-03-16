@@ -9,6 +9,21 @@ if (!isset($_SESSION['user_id'])) {
 $user_id = $_SESSION['user_id'];
 $user_role = $_SESSION['role'] ?? 'user';
 
+// Handle book removal (only for admins)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['remove_book']) && $user_role === 'admin') {
+    $book_number = trim($_POST['book_number']);
+    try {
+        $query = $pdo->prepare("DELETE FROM books WHERE book_number = ?");
+        $query->execute([$book_number]);
+        header('Location: available_books.php');
+        exit;
+    } catch (PDOException $e) {
+        $error_message = "Error removing book: " . $e->getMessage();
+        error_log($error_message);
+    }
+}
+
+// Fetch available books
 $query = $pdo->query("SELECT * FROM books WHERE available = 1");
 $available_books = $query->fetchAll();
 ?>
@@ -46,6 +61,7 @@ $available_books = $query->fetchAll();
                     <a href="#" id="students-tab"><i class="fas fa-users"></i> <span>Students</span></a>
                     <ul class="sub-menu" id="students-menu" style="display: none;">
                         <li><a href="dashboard.php?tab=add_student"><i class="fas fa-user-plus"></i> <span>Add Student</span></a></li>
+                        <li><a href="dashboard.php?tab=students"><i class="fas fa-list"></i> <span>Registered Students</span></a></li>
                     </ul>
                 <?php endif; ?>
                 <a href="notices.php"><i class="fas fa-bell"></i> <span>Notices</span></a>
@@ -61,6 +77,13 @@ $available_books = $query->fetchAll();
             <header>
                 <h1>Available Books</h1>
             </header>
+
+            <?php if (isset($error_message)): ?>
+                <div class="alert alert-error">
+                    <?php echo htmlspecialchars($error_message); ?>
+                </div>
+            <?php endif; ?>
+
             <section>
                 <div class="search-bar-container">
                     <i class="fas fa-search search-icon"></i>
@@ -73,17 +96,34 @@ $available_books = $query->fetchAll();
                             <th>Author</th>
                             <th>Genre</th>
                             <th>Book Number</th>
+                            <?php if ($user_role === 'admin'): ?>
+                                <th>Action</th>
+                            <?php endif; ?>
                         </tr>
                     </thead>
                     <tbody>
-                        <?php foreach ($available_books as $book): ?>
+                        <?php if (empty($available_books)): ?>
                             <tr>
-                                <td><?= htmlspecialchars($book['title']) ?></td>
-                                <td><?= htmlspecialchars($book['author']) ?></td>
-                                <td><?= htmlspecialchars($book['genre']) ?></td>
-                                <td><?= htmlspecialchars($book['book_number']) ?></td>
+                                <td colspan="<?php echo $user_role === 'admin' ? 5 : 4; ?>">No available books found.</td>
                             </tr>
-                        <?php endforeach; ?>
+                        <?php else: ?>
+                            <?php foreach ($available_books as $book): ?>
+                                <tr>
+                                    <td><?= htmlspecialchars($book['title']) ?></td>
+                                    <td><?= htmlspecialchars($book['author']) ?></td>
+                                    <td><?= htmlspecialchars($book['genre']) ?></td>
+                                    <td><?= htmlspecialchars($book['book_number']) ?></td>
+                                    <?php if ($user_role === 'admin'): ?>
+                                        <td>
+                                            <form method="POST" style="display:inline;">
+                                                <input type="hidden" name="book_number" value="<?= htmlspecialchars($book['book_number']) ?>">
+                                                <button type="submit" name="remove_book" class="remove-btn"><i class="fas fa-trash"></i> Remove</button>
+                                            </form>
+                                        </td>
+                                    <?php endif; ?>
+                                </tr>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
                     </tbody>
                 </table>
             </section>
