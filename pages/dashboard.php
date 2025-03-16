@@ -147,7 +147,7 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - SHS Library System</title>
+    <title>Dashboard - Library System</title>
     <link rel="stylesheet" href="../css/styles.css">
     <link rel="stylesheet" href="../css/admin-dashboard.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
@@ -236,7 +236,7 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
             <div class="sidebar-header">
                 <h2>
                     <img src="../images/logo.png" alt="School Logo" class="school-logo">
-                    SHS Library
+                    SHS LIBRARY
                 </h2>
             </div>
             <nav>
