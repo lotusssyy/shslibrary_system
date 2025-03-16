@@ -44,6 +44,17 @@
     color: #003366;
 }
 
+/* Center the Action column */
+.student-table th:nth-child(5), /* Adjust based on column position */
+.student-table td:nth-child(5) { /* "Action" is the 5th column in available_books.php */
+    text-align: center;
+}
+
+.student-table th:nth-child(6), /* "Action" is the 6th column in dashboard.php */
+.student-table td:nth-child(6) {
+    text-align: center;
+}
+
 /* Form Groups */
 .admin-section .form-group {
     margin-bottom: 15px;
@@ -112,14 +123,15 @@
     background-color: #003366; /* Blue to match dashboard.php */
     color: white; /* White text */
     border: none; /* Remove default border */
-    padding: 4px 8px; /* Adjusted for smaller size */
+    padding: 6px 12px; /* Increased for larger size */
     border-radius: 3px; /* Rounded corners */
     cursor: pointer; /* Hand cursor on hover */
-    display: flex; /* Align icon and text */
+    display: inline-flex; /* Use inline-flex to keep it centered */
     align-items: center; /* Center items vertically */
-    gap: 4px; /* Adjusted gap for smaller size */
+    gap: 6px; /* Increased gap for larger size */
     transition: background-color 0.3s ease; /* Smooth hover effect */
-    vertical-align: middle; /* Center vertically in table cell */
+    font-size: 0.9rem; /* Match table font size */
+    vertical-align: middle; /* Ensure vertical centering */
 }
 
 .remove-btn:hover {

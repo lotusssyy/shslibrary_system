@@ -43,13 +43,15 @@ $available_books = $query->fetchAll();
             background-color: #003366; /* Blue to match dashboard.php */
             color: white; /* White text */
             border: none; /* Remove default border */
-            padding: 5px 10px; /* Compact padding */
+            padding: 6px 12px; /* Increased for larger size */
             border-radius: 3px; /* Rounded corners */
             cursor: pointer; /* Hand cursor on hover */
-            display: flex; /* Align icon and text */
+            display: inline-flex; /* Use inline-flex to keep it centered */
             align-items: center; /* Center items vertically */
-            gap: 5px; /* Space between icon and text */
+            gap: 6px; /* Increased gap for larger size */
             transition: background-color 0.3s ease; /* Smooth hover effect */
+            font-size: 0.9rem; /* Match table font size */
+            vertical-align: middle; /* Ensure vertical centering */
         }
 
         .remove-btn:hover {
@@ -57,7 +59,7 @@ $available_books = $query->fetchAll();
         }
 
         .remove-btn i {
-            margin-right: 5px; /* Space between icon and text */
+            margin-right: 0; /* Remove margin for tighter spacing with adjusted padding */
         }
     </style>
 </head>
