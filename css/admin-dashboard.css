@@ -109,24 +109,25 @@
 
 /* Remove Button Styling */
 .remove-btn {
-    background-color: #e74c3c; /* Red background matching alert-error */
+    background-color: #003366; /* Blue to match dashboard.php */
     color: white; /* White text */
     border: none; /* Remove default border */
-    padding: 5px 10px; /* Compact padding */
+    padding: 4px 8px; /* Adjusted for smaller size */
     border-radius: 3px; /* Rounded corners */
     cursor: pointer; /* Hand cursor on hover */
     display: flex; /* Align icon and text */
     align-items: center; /* Center items vertically */
-    gap: 5px; /* Space between icon and text */
+    gap: 4px; /* Adjusted gap for smaller size */
     transition: background-color 0.3s ease; /* Smooth hover effect */
+    vertical-align: middle; /* Center vertically in table cell */
 }
 
 .remove-btn:hover {
-    background-color: #c0392b; /* Darker red on hover */
+    background-color: #ffd700; /* Yellow hover to match admin button hover */
 }
 
 .remove-btn i {
-    margin-right: 5px; /* Space between icon and text */
+    margin-right: 0; /* Remove margin for tighter spacing with adjusted padding */
 }
 
 /* Media Queries for Desktop */
