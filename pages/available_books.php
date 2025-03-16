@@ -35,6 +35,7 @@ $available_books = $query->fetchAll();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Available Books - SHS Library</title>
     <link rel="stylesheet" href="../css/styles.css">
+    <link rel="stylesheet" href="../css/admin-dashboard.css"> <!-- Added to ensure consistent styling -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
 </head>
 <body>
