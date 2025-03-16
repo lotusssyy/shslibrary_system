@@ -72,8 +72,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['remove_student']) && 
         }
         $internal_student_id = $student['id'];
 
-        // Delete related transactions (use user_id instead of student_id)
+        // Delete related transactions
         $query = $pdo->prepare("DELETE FROM transactions WHERE user_id = ?");
+        $query->execute([$internal_student_id]);
+
+        // Delete related notices
+        $query = $pdo->prepare("DELETE FROM notices WHERE user_id = ?");
         $query->execute([$internal_student_id]);
 
         // Delete the student
