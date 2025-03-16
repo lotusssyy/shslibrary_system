@@ -22,20 +22,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_student']) && $us
     $rfid_number = trim($_POST['rfid_number']);
     $student_id = trim($_POST['student_id']);
     $course = trim($_POST['course']);
-    $year_level = trim($_POST['year_level']);
+    $year_level = isset($_POST['year_level']) ? (int) trim($_POST['year_level']) : 0;
+
+    // Debug log
+    error_log("Received year_level: '$year_level'");
 
     $check_stmt = $pdo->prepare("SELECT COUNT(*) FROM users WHERE student_id = ?");
     $check_stmt->execute([$student_id]);
     if ($check_stmt->fetchColumn() > 0) {
         $error_message = "Student ID '$student_id' already exists. Please use a unique ID.";
     } else {
-        try {
-            $query = $pdo->prepare("INSERT INTO users (first_name, last_name, email, password, rfid_number, student_id, course, year_level, role) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'student')");
-            $query->execute([$first_name, $last_name, $email, $password, $rfid_number, $student_id, $course, $year_level]);
-            header('Location: dashboard.php?tab=students');
-            exit;
-        } catch (PDOException $e) {
-            $error_message = "Error adding student: " . $e->getMessage();
+        // Validate year_level
+        $valid_year_levels = [11, 12];
+        if ($year_level === 0 || !in_array($year_level, $valid_year_levels)) {
+            $error_message = "Invalid year level selected. Please choose Grade 11 or Grade 12.";
+            error_log("Validation failed: Invalid year_level: '$year_level'");
+        } else {
+            try {
+                $query = $pdo->prepare("INSERT INTO users (first_name, last_name, email, password, rfid_number, student_id, course, year_level, role) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'student')");
+                $query->execute([$first_name, $last_name, $email, $password, $rfid_number, $student_id, $course, $year_level]);
+                header('Location: dashboard.php?tab=students');
+                exit;
+            } catch (PDOException $e) {
+                $error_message = "Error adding student: " . $e->getMessage();
+                error_log($error_message);
+            }
         }
     }
 }
@@ -204,8 +215,8 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                                 <label>Year Level:</label>
                                 <select name="year_level" required>
                                     <option value="">Select Year Level</option>
-                                    <option value="Grade 11">Grade 11</option>
-                                    <option value="Grade 12">Grade 12</option>
+                                    <option value="11">Grade 11</option>
+                                    <option value="12">Grade 12</option>
                                 </select>
                             </div>
                             <button type="submit" name="add_student">Add Student</button>
@@ -242,7 +253,7 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                                         <td><?php echo htmlspecialchars($student['email']); ?></td>
                                         <td><?php echo $student_id; ?></td>
                                         <td><?php echo htmlspecialchars($student['course']); ?></td>
-                                        <td><?php echo htmlspecialchars($student['year_level']); ?></td>
+                                        <td><?php echo htmlspecialchars($student['year_level'] == 11 ? 'Grade 11' : ($student['year_level'] == 12 ? 'Grade 12' : 'Unknown')); ?></td>
                                         <td>
                                             <form method="POST" style="display:inline;">
                                                 <input type="hidden" name="student_id" value="<?php echo $student_id; ?>">
