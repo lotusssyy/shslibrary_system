@@ -50,6 +50,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['remove_book']) && $us
     }
 }
 
+// Handle resetting books (admin only)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reset_books']) && $user_role === 'admin') {
+    try {
+        $pdo->beginTransaction();
+        $query = $pdo->prepare("DELETE FROM books");
+        $query->execute();
+        $pdo->commit();
+        $success_message = "All books have been removed successfully.";
+        error_log("Admin reset all books on " . date('Y-m-d H:i:s'));
+    } catch (PDOException $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        $error_message = "Error resetting books: " . $e->getMessage();
+        error_log($error_message);
+    }
+}
+
 // Fetch available books
 $query = $pdo->query("SELECT * FROM books WHERE available = 1");
 $available_books = $query->fetchAll();
@@ -84,8 +102,8 @@ $available_books = $query->fetchAll();
             background-color: #f2f2f2;
         }
 
-        /* Button styling to match borrowed_books.php */
-        .remove-btn {
+        /* Button styling */
+        .remove-btn, .reset-btn {
             background-color: #003366;
             color: white;
             border: none;
@@ -99,19 +117,19 @@ $available_books = $query->fetchAll();
             font-size: 0.9rem;
             vertical-align: middle;
         }
-        .remove-btn:hover {
+        .remove-btn:hover, .reset-btn:hover {
             background-color: #ffd700;
         }
-        .remove-btn i {
+        .remove-btn i, .reset-btn i {
             margin-right: 0;
         }
         @media (min-width: 768px) {
-            .remove-btn {
+            .remove-btn, .reset-btn {
                 font-size: 1rem;
             }
         }
 
-        /* Success message styling */
+        /* Success/Error message styling */
         .alert-success {
             padding: 10px;
             margin: 15px 0;
@@ -121,8 +139,17 @@ $available_books = $query->fetchAll();
             color: #28a745;
             font-size: 0.9rem;
         }
+        .alert-error {
+            padding: 10px;
+            margin: 15px 0;
+            border: 1px solid #dc3545;
+            border-radius: 4px;
+            background-color: #f8d7da;
+            color: #dc3545;
+            font-size: 0.9rem;
+        }
 
-        /* Search bar styling (unchanged) */
+        /* Search bar styling */
         .search-bar-container {
             position: relative;
             margin-bottom: 20px;
@@ -191,12 +218,17 @@ $available_books = $query->fetchAll();
             <?php endif; ?>
 
             <?php if (!empty($error_message)): ?>
-                <div class="alert alert-error">
+                <div class="alert-error">
                     <?php echo htmlspecialchars($error_message); ?>
                 </div>
             <?php endif; ?>
 
             <section>
+                <?php if ($user_role === 'admin'): ?>
+                    <form method="POST" style="margin-bottom: 15px; display:inline;">
+                        <button type="submit" name="reset_books" class="reset-btn" onclick="return confirm('Are you sure you want to remove all books? This action cannot be undone.');"><i class="fas fa-undo"></i> Reset Books</button>
+                    </form>
+                <?php endif; ?>
                 <div class="search-bar-container">
                     <i class="fas fa-search search-icon"></i>
                     <input type="text" id="search-bar" class="search-bar" placeholder="Search for books..." onkeyup="filterBooks()">
