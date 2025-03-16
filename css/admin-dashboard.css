@@ -107,6 +107,28 @@
     background-size: 20px;
 }
 
+/* Remove Button Styling */
+.remove-btn {
+    background-color: #e74c3c; /* Red background matching alert-error */
+    color: white; /* White text */
+    border: none; /* Remove default border */
+    padding: 5px 10px; /* Compact padding */
+    border-radius: 3px; /* Rounded corners */
+    cursor: pointer; /* Hand cursor on hover */
+    display: flex; /* Align icon and text */
+    align-items: center; /* Center items vertically */
+    gap: 5px; /* Space between icon and text */
+    transition: background-color 0.3s ease; /* Smooth hover effect */
+}
+
+.remove-btn:hover {
+    background-color: #c0392b; /* Darker red on hover */
+}
+
+.remove-btn i {
+    margin-right: 5px; /* Space between icon and text */
+}
+
 /* Media Queries for Desktop */
 @media (min-width: 768px) {
     .admin-section h2 {
@@ -126,25 +148,4 @@
         width: auto;
         padding: 10px 20px;
     }
-}
-
-.remove-btn {
-    background-color: #e74c3c;
-    color: white;
-    border: none;
-    padding: 5px 10px;
-    border-radius: 3px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    transition: background-color 0.3s;
-}
-
-.remove-btn:hover {
-    background-color: #c0392b;
-}
-
-.remove-btn i {
-    margin-right: 5px;
 }
