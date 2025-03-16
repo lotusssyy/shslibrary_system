@@ -9,15 +9,42 @@ if (!isset($_SESSION['user_id'])) {
 $user_id = $_SESSION['user_id'];
 $user_role = $_SESSION['role'] ?? 'user';
 
+// Initialize messages
+$success_message = '';
+$error_message = '';
+
 // Handle book removal (only for admins)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['remove_book']) && $user_role === 'admin') {
     $book_number = trim($_POST['book_number']);
     try {
+        // Start a transaction to ensure data consistency
+        $pdo->beginTransaction();
+
+        // Find the book ID based on book_number
+        $query = $pdo->prepare("SELECT id FROM books WHERE book_number = ?");
+        $query->execute([$book_number]);
+        $book = $query->fetch();
+        if (!$book) {
+            throw new Exception("Book not found.");
+        }
+        $book_id = $book['id'];
+
+        // Delete related transactions
+        $query = $pdo->prepare("DELETE FROM transactions WHERE book_id = ?");
+        $query->execute([$book_id]);
+
+        // Delete the book
         $query = $pdo->prepare("DELETE FROM books WHERE book_number = ?");
         $query->execute([$book_number]);
-        header('Location: available_books.php');
-        exit;
-    } catch (PDOException $e) {
+
+        // Commit the transaction
+        $pdo->commit();
+
+        // Set success message
+        $success_message = "Book removed successfully.";
+    } catch (Exception $e) {
+        // Roll back the transaction on error
+        $pdo->rollBack();
         $error_message = "Error removing book: " . $e->getMessage();
         error_log($error_message);
     }
@@ -43,12 +70,12 @@ $available_books = $query->fetchAll();
             background-color: #003366; /* Blue to match dashboard.php */
             color: white; /* White text */
             border: none; /* Remove default border */
-            padding: 8px 16px; /* Increased for larger size */
+            padding: 8px 16px; /* Size matches dashboard.php */
             border-radius: 3px; /* Rounded corners */
             cursor: pointer; /* Hand cursor on hover */
             display: inline-flex; /* Use inline-flex to keep it centered */
             align-items: center; /* Center items vertically */
-            gap: 8px; /* Increased gap for larger size */
+            gap: 8px; /* Gap for larger size */
             transition: background-color 0.3s ease; /* Smooth hover effect */
             font-size: 0.9rem; /* Match table font size */
             vertical-align: middle; /* Ensure vertical centering */
@@ -66,6 +93,17 @@ $available_books = $query->fetchAll();
             .remove-btn {
                 font-size: 1rem; /* Match larger font size on desktop */
             }
+        }
+
+        /* Success message styling */
+        .alert-success {
+            padding: 10px;
+            margin: 15px 0;
+            border: 1px solid #28a745;
+            border-radius: 4px;
+            background-color: #d4edda;
+            color: #28a745;
+            font-size: 0.9rem;
         }
     </style>
 </head>
@@ -110,7 +148,13 @@ $available_books = $query->fetchAll();
                 <h1>Available Books</h1>
             </header>
 
-            <?php if (isset($error_message)): ?>
+            <?php if (!empty($success_message)): ?>
+                <div class="alert-success">
+                    <?php echo htmlspecialchars($success_message); ?>
+                </div>
+            <?php endif; ?>
+
+            <?php if (!empty($error_message)): ?>
                 <div class="alert alert-error">
                     <?php echo htmlspecialchars($error_message); ?>
                 </div>
