@@ -220,7 +220,7 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
 
         /* Adjust placement of "No transactions recorded" text */
         .admin-section p.no-transactions {
-            margin-top: 20px; /* Increase this value to lower it further (e.g., 30px, 40px) */
+            margin-top: 20px;
         }
     </style>
 </head>
@@ -289,9 +289,9 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                         ?></p>
                     </div>
                     <div class="card">
-                        <h3>Total Books</h3>
+                        <h3>Total Books Available</h3>
                         <p><?php
-                            $query = $pdo->query("SELECT COUNT(*) FROM books");
+                            $query = $pdo->query("SELECT COUNT(*) FROM books WHERE available = 1");
                             echo $query->fetchColumn();
                         ?></p>
                     </div>
@@ -419,11 +419,11 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                                                 FROM transactions t 
                                                 LEFT JOIN users u ON t.user_id = u.id 
                                                 LEFT JOIN books b ON t.book_id = b.id 
-                                                ORDER BY t.id DESC"); // Fallback to id if transaction_date is missing
+                                                ORDER BY t.id DESC");
                             $transactions = $query->fetchAll(PDO::FETCH_ASSOC);
                         } catch (PDOException $e) {
                             $error_message = "Error loading transactions: " . $e->getMessage();
-                            $transactions = []; // Default to empty array if query fails
+                            $transactions = [];
                             error_log($error_message);
                         }
                         if (empty($transactions)) {
