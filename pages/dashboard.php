@@ -222,6 +222,11 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
         .admin-section p.no-transactions {
             margin-top: 20px;
         }
+
+        /* Reset button container */
+        .reset-button-container {
+            margin-top: 15px;
+        }
     </style>
 </head>
 <body>
@@ -344,6 +349,7 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                                 <select name="course" required>
                                     <option value="">Select Course/Strand</option>
                                     <option value="STEM">STEM</option>
+                                    <option value="STEM Maritime">STEM Maritime</option>
                                     <option value="ABM">ABM</option>
                                     <option value="HUMSS">HUMSS</option>
                                     <option value="GAS">GAS</option>
@@ -410,9 +416,6 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                 <?php if ($active_tab === 'transactions' && $user_role === 'admin'): ?>
                     <section class="admin-section">
                         <h2>Transactions</h2>
-                        <form method="POST" style="margin-bottom: 15px; display:inline;">
-                            <button type="submit" name="reset_transactions" class="reset-btn" onclick="return confirm('Are you sure you want to reset all transactions? This action cannot be undone.');"><i class="fas fa-undo"></i> Reset Transactions</button>
-                        </form>
                         <?php
                         try {
                             $query = $pdo->query("SELECT t.id, u.student_id, b.title, t.transaction_date, t.status 
@@ -453,6 +456,11 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                             </tbody>
                         </table>
                         <?php } ?>
+                        <div class="reset-button-container">
+                            <form method="POST" style="display:inline;">
+                                <button type="submit" name="reset_transactions" class="reset-btn" onclick="return confirm('Are you sure you want to reset all transactions? This action cannot be undone.');"><i class="fas fa-undo"></i> Reset Transactions</button>
+                            </form>
+                        </div>
                     </section>
                 <?php endif; ?>
 
