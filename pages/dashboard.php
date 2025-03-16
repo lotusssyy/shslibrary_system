@@ -30,7 +30,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_student']) && $us
     $course = trim($_POST['course']);
     $year_level = isset($_POST['year_level']) ? (int) trim($_POST['year_level']) : 0;
 
-    // Debug log
     error_log("Received year_level: '$year_level'");
 
     $check_stmt = $pdo->prepare("SELECT COUNT(*) FROM users WHERE student_id = ?");
@@ -38,7 +37,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_student']) && $us
     if ($check_stmt->fetchColumn() > 0) {
         $error_message = "Student ID '$student_id' already exists. Please use a unique ID.";
     } else {
-        // Validate year_level
         $valid_year_levels = [11, 12];
         if ($year_level === 0 || !in_array($year_level, $valid_year_levels)) {
             $error_message = "Invalid year level selected. Please choose Grade 11 or Grade 12.";
@@ -60,10 +58,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_student']) && $us
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['remove_student']) && $user_role === 'admin') {
     $student_id = trim($_POST['student_id']);
     try {
-        // Start a transaction to ensure data consistency
         $pdo->beginTransaction();
-
-        // Find the student's internal ID (users.id) based on student_id
         $query = $pdo->prepare("SELECT id FROM users WHERE student_id = ? AND role = 'student'");
         $query->execute([$student_id]);
         $student = $query->fetch();
@@ -72,24 +67,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['remove_student']) && 
         }
         $internal_student_id = $student['id'];
 
-        // Delete related transactions
         $query = $pdo->prepare("DELETE FROM transactions WHERE user_id = ?");
         $query->execute([$internal_student_id]);
 
-        // Delete related notices
         $query = $pdo->prepare("DELETE FROM notices WHERE user_id = ?");
         $query->execute([$internal_student_id]);
 
-        // Delete the student
         $query = $pdo->prepare("DELETE FROM users WHERE student_id = ? AND role = 'student'");
         $query->execute([$student_id]);
 
-        // Commit the transaction
         $pdo->commit();
-
         $success_message = "Student removed successfully.";
     } catch (Exception $e) {
-        // Roll back the transaction on error
         $pdo->rollBack();
         $error_message = "Error removing student: " . $e->getMessage();
         error_log($error_message);
@@ -117,24 +106,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_book']) && $user_
 // Handle resetting transactions (admin only)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reset_transactions']) && $user_role === 'admin') {
     try {
-        // Start a transaction to ensure data consistency
         $pdo->beginTransaction();
-
-        // Delete all records from the transactions table
         $query = $pdo->prepare("DELETE FROM transactions");
         $query->execute();
-
-        // Commit the transaction
         $pdo->commit();
-
         $success_message = "All transactions have been reset successfully.";
         error_log("Admin reset all transactions on " . date('Y-m-d H:i:s'));
     } catch (PDOException $e) {
-        // Roll back the transaction only if it was started
         if ($pdo->inTransaction()) {
             $pdo->rollBack();
         }
         $error_message = "Error resetting transactions: " . $e->getMessage();
+        error_log($error_message);
+    }
+}
+
+// Handle resetting books (admin only)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reset_books']) && $user_role === 'admin') {
+    try {
+        $pdo->beginTransaction();
+        $query = $pdo->prepare("DELETE FROM books");
+        $query->execute();
+        $pdo->commit();
+        $success_message = "All books have been removed successfully.";
+        error_log("Admin reset all books on " . date('Y-m-d H:i:s'));
+    } catch (PDOException $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        $error_message = "Error resetting books: " . $e->getMessage();
         error_log($error_message);
     }
 }
@@ -157,7 +157,6 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
             display: block;
             margin-top: 10px;
         }
-        /* Fallback in case admin-dashboard.css doesn't load */
         .remove-btn, .reset-btn {
             background-color: #003366;
             color: white;
@@ -172,21 +171,17 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
             font-size: 0.9rem;
             vertical-align: middle;
         }
-
         .remove-btn:hover, .reset-btn:hover {
             background-color: #ffd700;
         }
-
         .remove-btn i, .reset-btn i {
             margin-right: 0;
         }
-
         @media (min-width: 768px) {
             .remove-btn, .reset-btn {
                 font-size: 1rem;
             }
         }
-
         .alert-success {
             padding: 10px;
             margin: 15px 0;
@@ -196,29 +191,23 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
             color: #28a745;
             font-size: 0.9rem;
         }
-
         .transaction-table {
             width: 100%;
             border-collapse: collapse;
             margin-top: 15px;
         }
-
         .transaction-table th, .transaction-table td {
             padding: 10px;
             text-align: left;
             border: 1px solid #ddd;
         }
-
         .transaction-table th {
             background-color: #003366;
             color: white;
         }
-
         .transaction-table tr:nth-child(even) {
             background-color: #f2f2f2;
         }
-
-        /* Adjust placement of "No transactions recorded" text */
         .admin-section p.no-transactions {
             margin-top: 20px;
         }
@@ -289,9 +278,9 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                         ?></p>
                     </div>
                     <div class="card">
-                        <h3>Total Books Available</h3>
+                        <h3>Total Books</h3>
                         <p><?php
-                            $query = $pdo->query("SELECT COUNT(*) FROM books WHERE available = 1");
+                            $query = $pdo->query("SELECT COUNT(*) FROM books");
                             echo $query->fetchColumn();
                         ?></p>
                     </div>
@@ -302,6 +291,13 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                             echo $query->fetchColumn();
                         ?></p>
                     </div>
+                </section>
+                <section class="admin-section">
+                    <?php if ($user_role === 'admin'): ?>
+                        <form method="POST" style="margin-top: 20px; display:inline;">
+                            <button type="submit" name="reset_books" class="reset-btn" onclick="return confirm('Are you sure you want to remove all books? This action cannot be undone.');"><i class="fas fa-undo"></i> Reset Books</button>
+                        </form>
+                    <?php endif; ?>
                 </section>
                 <section class="chart">
                     <h2>Monthly Transactions</h2>
@@ -324,7 +320,7 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                             </div>
                             <div class="form-group">
                                 <label>Email:</label>
-                                <input type="email" name="email" required>
+                                <input type="text" name="email" required>
                             </div>
                             <div class="form-group">
                                 <label>Password:</label>
