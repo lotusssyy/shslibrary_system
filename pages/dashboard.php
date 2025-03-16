@@ -9,11 +9,17 @@ if (!isset($_SESSION['user_id'])) {
 $user_id = $_SESSION['user_id'];
 $user_role = $_SESSION['role'] ?? 'student';
 
+// Initialize messages
+$success_message = '';
+$error_message = '';
+
+// Fetch user details
 $stmt = $pdo->prepare("SELECT first_name, last_name FROM users WHERE id = :id");
 $stmt->bindParam(':id', $user_id, PDO::PARAM_INT);
 $stmt->execute();
 $user = $stmt->fetch();
 
+// Handle adding a student (admin only)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_student']) && $user_role === 'admin') {
     $first_name = trim($_POST['first_name']);
     $last_name = trim($_POST['last_name']);
@@ -41,8 +47,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_student']) && $us
             try {
                 $query = $pdo->prepare("INSERT INTO users (first_name, last_name, email, password, rfid_number, student_id, course, year_level, role) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'student')");
                 $query->execute([$first_name, $last_name, $email, $password, $rfid_number, $student_id, $course, $year_level]);
-                header('Location: dashboard.php?tab=students');
-                exit;
+                $success_message = "Student added successfully.";
             } catch (PDOException $e) {
                 $error_message = "Error adding student: " . $e->getMessage();
                 error_log($error_message);
@@ -51,14 +56,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_student']) && $us
     }
 }
 
+// Handle removing a student (admin only)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['remove_student']) && $user_role === 'admin') {
     $student_id = trim($_POST['student_id']);
-    $query = $pdo->prepare("DELETE FROM users WHERE student_id = ? AND role = 'student'");
-    $query->execute([$student_id]);
-    header('Location: dashboard.php?tab=students');
-    exit;
+    try {
+        // Start a transaction to ensure data consistency
+        $pdo->beginTransaction();
+
+        // Find the student's internal ID (users.id) based on student_id
+        $query = $pdo->prepare("SELECT id FROM users WHERE student_id = ? AND role = 'student'");
+        $query->execute([$student_id]);
+        $student = $query->fetch();
+        if (!$student) {
+            throw new Exception("Student not found.");
+        }
+        $internal_student_id = $student['id'];
+
+        // Delete related transactions
+        $query = $pdo->prepare("DELETE FROM transactions WHERE student_id = ?");
+        $query->execute([$internal_student_id]);
+
+        // Delete the student
+        $query = $pdo->prepare("DELETE FROM users WHERE student_id = ? AND role = 'student'");
+        $query->execute([$student_id]);
+
+        // Commit the transaction
+        $pdo->commit();
+
+        $success_message = "Student removed successfully.";
+    } catch (Exception $e) {
+        // Roll back the transaction on error
+        $pdo->rollBack();
+        $error_message = "Error removing student: " . $e->getMessage();
+        error_log($error_message);
+    }
 }
 
+// Handle adding a book (admin only)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_book']) && $user_role === 'admin') {
     $title = trim($_POST['title']);
     $author = trim($_POST['author']);
@@ -66,10 +100,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_book']) && $user_
     $barcode = trim($_POST['barcode']);
     $book_number = trim($_POST['book_number']);
 
-    $query = $pdo->prepare("INSERT INTO books (title, author, genre, barcode, book_number, available, total_quantity, added_at) VALUES (?, ?, ?, ?, ?, 1, 1, NOW())");
-    $query->execute([$title, $author, $genre, $barcode, $book_number]);
-    header('Location: dashboard.php?tab=add_book');
-    exit;
+    try {
+        $query = $pdo->prepare("INSERT INTO books (title, author, genre, barcode, book_number, available, total_quantity, added_at) VALUES (?, ?, ?, ?, ?, 1, 1, NOW())");
+        $query->execute([$title, $author, $genre, $barcode, $book_number]);
+        $success_message = "Book added successfully.";
+    } catch (PDOException $e) {
+        $error_message = "Error adding book: " . $e->getMessage();
+        error_log($error_message);
+    }
 }
 
 $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
@@ -89,6 +127,45 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
         .form-group .scan-btn {
             display: block;
             margin-top: 10px;
+        }
+        /* Fallback in case admin-dashboard.css doesn't load */
+        .remove-btn {
+            background-color: #003366;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 3px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: background-color 0.3s ease;
+            font-size: 0.9rem;
+            vertical-align: middle;
+        }
+
+        .remove-btn:hover {
+            background-color: #ffd700;
+        }
+
+        .remove-btn i {
+            margin-right: 0;
+        }
+
+        @media (min-width: 768px) {
+            .remove-btn {
+                font-size: 1rem;
+            }
+        }
+
+        .alert-success {
+            padding: 10px;
+            margin: 15px 0;
+            border: 1px solid #28a745;
+            border-radius: 4px;
+            background-color: #d4edda;
+            color: #28a745;
+            font-size: 0.9rem;
         }
     </style>
 </head>
@@ -134,7 +211,13 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                 <p>Welcome back, <?php echo htmlspecialchars($user['first_name'] . ' ' . $user['last_name']); ?>!</p>
             </header>
 
-            <?php if (isset($error_message)): ?>
+            <?php if (!empty($success_message)): ?>
+                <div class="alert-success">
+                    <?php echo htmlspecialchars($success_message); ?>
+                </div>
+            <?php endif; ?>
+
+            <?php if (!empty($error_message)): ?>
                 <div class="alert alert-error">
                     <?php echo htmlspecialchars($error_message); ?>
                 </div>
@@ -228,7 +311,7 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                     <section class="admin-section">
                         <h2>Registered Students</h2>
                         <?php
-                        $query = $pdo->query("SELECT first_name, last_name, email, student_id, course, year_level FROM users WHERE role = 'student' ORDER BY last_name, first_name");
+                        $query = $pdo->query("SELECT id, first_name, last_name, email, student_id, course, year_level FROM users WHERE role = 'student' ORDER BY last_name, first_name");
                         $students = $query->fetchAll(PDO::FETCH_ASSOC);
                         if (empty($students)) {
                             echo "<p>No students registered in the database.</p>";
