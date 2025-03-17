@@ -2,8 +2,15 @@
 header("Content-Type: text/plain");
 require 'includes/db.php';
 
+// Include PHPMailer (adjust path as needed)
+require 'vendor/autoload.php'; // If using Composer
+// OR: require 'path/to/PHPMailerAutoload.php'; // If manually installed
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception;
+
+// Disable displaying errors to client, log them instead
 error_reporting(E_ALL);
-ini_set('display_errors', 1); // Enable for debugging
+ini_set('display_errors', 0); // Set to 0 to prevent errors from being sent to client
 
 $rfid_number = isset($_POST['rfid_number']) ? trim($_POST['rfid_number']) : '';
 $action = isset($_POST['action']) ? trim($_POST['action']) : '';
@@ -107,6 +114,7 @@ try {
     $error_message = $e->getMessage();
     error_log("Transaction failed: $error_message");
     echo $error_message;
+    exit; // Ensure no further output after error
 }
 
 function notifyStudent($user_id, $email, $book_title, $action, $due_date) {
@@ -146,6 +154,7 @@ function notifyStudent($user_id, $email, $book_title, $action, $due_date) {
         error_log("Email sent to $email for $action of '$book_title'");
     } catch (Exception $e) {
         error_log("Email failed: " . $e->getMessage());
+        // Do not echo the error to prevent it from being sent to NodeMCU
     }
 }
 ?>
