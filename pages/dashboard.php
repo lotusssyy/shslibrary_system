@@ -30,15 +30,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_student']) && $us
     $course = trim($_POST['course']);
     $year_level = isset($_POST['year_level']) ? (int) trim($_POST['year_level']) : 0;
 
-    // Debug log
-    error_log("Received year_level: '$year_level'");
-
     $check_stmt = $pdo->prepare("SELECT COUNT(*) FROM users WHERE student_id = ?");
     $check_stmt->execute([$student_id]);
     if ($check_stmt->fetchColumn() > 0) {
         $error_message = "Student ID '$student_id' already exists. Please use a unique ID.";
     } else {
-        // Validate year_level
         $valid_year_levels = [11, 12];
         if ($year_level === 0 || !in_array($year_level, $valid_year_levels)) {
             $error_message = "Invalid year level selected. Please choose Grade 11 or Grade 12.";
@@ -60,10 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_student']) && $us
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['remove_student']) && $user_role === 'admin') {
     $student_id = trim($_POST['student_id']);
     try {
-        // Start a transaction to ensure data consistency
         $pdo->beginTransaction();
-
-        // Find the student's internal ID (users.id) based on student_id
         $query = $pdo->prepare("SELECT id FROM users WHERE student_id = ? AND role = 'student'");
         $query->execute([$student_id]);
         $student = $query->fetch();
@@ -71,25 +64,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['remove_student']) && 
             throw new Exception("Student not found.");
         }
         $internal_student_id = $student['id'];
-
-        // Delete related transactions
         $query = $pdo->prepare("DELETE FROM transactions WHERE user_id = ?");
         $query->execute([$internal_student_id]);
-
-        // Delete related notices
         $query = $pdo->prepare("DELETE FROM notices WHERE user_id = ?");
         $query->execute([$internal_student_id]);
-
-        // Delete the student
         $query = $pdo->prepare("DELETE FROM users WHERE student_id = ? AND role = 'student'");
         $query->execute([$student_id]);
-
-        // Commit the transaction
         $pdo->commit();
-
         $success_message = "Student removed successfully.";
     } catch (Exception $e) {
-        // Roll back the transaction on error
         $pdo->rollBack();
         $error_message = "Error removing student: " . $e->getMessage();
         error_log($error_message);
@@ -117,20 +100,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_book']) && $user_
 // Handle resetting transactions (admin only)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reset_transactions']) && $user_role === 'admin') {
     try {
-        // Start a transaction to ensure data consistency
         $pdo->beginTransaction();
-
-        // Delete all records from the transactions table
         $query = $pdo->prepare("DELETE FROM transactions");
         $query->execute();
-
-        // Commit the transaction
         $pdo->commit();
-
         $success_message = "All transactions have been reset successfully.";
         error_log("Admin reset all transactions on " . date('Y-m-d H:i:s'));
     } catch (PDOException $e) {
-        // Roll back the transaction only if it was started
         if ($pdo->inTransaction()) {
             $pdo->rollBack();
         }
@@ -157,7 +133,6 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
             display: block;
             margin-top: 10px;
         }
-        /* Fallback in case admin-dashboard.css doesn't load */
         .remove-btn, .reset-btn {
             background-color: #003366;
             color: white;
@@ -172,21 +147,17 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
             font-size: 0.9rem;
             vertical-align: middle;
         }
-
         .remove-btn:hover, .reset-btn:hover {
             background-color: #ffd700;
         }
-
         .remove-btn i, .reset-btn i {
             margin-right: 0;
         }
-
         @media (min-width: 768px) {
             .remove-btn, .reset-btn {
                 font-size: 1rem;
             }
         }
-
         .alert-success {
             padding: 10px;
             margin: 15px 0;
@@ -196,34 +167,26 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
             color: #28a745;
             font-size: 0.9rem;
         }
-
         .transaction-table {
             width: 100%;
             border-collapse: collapse;
             margin-top: 15px;
         }
-
         .transaction-table th, .transaction-table td {
             padding: 10px;
             text-align: left;
             border: 1px solid #ddd;
         }
-
         .transaction-table th {
             background-color: #003366;
             color: white;
         }
-
         .transaction-table tr:nth-child(even) {
             background-color: #f2f2f2;
         }
-
-        /* Adjust placement of "No transactions recorded" text */
         .admin-section p.no-transactions {
             margin-top: 20px;
         }
-
-        /* Reset button container */
         .reset-button-container {
             margin-top: 15px;
         }
@@ -255,7 +218,8 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                         <li><a href="dashboard.php?tab=add_student" class="<?= $active_tab === 'add_student' ? 'active' : '' ?>"><i class="fas fa-user-plus"></i> <span>Add Student</span></a></li>
                         <li><a href="dashboard.php?tab=students" class="<?= $active_tab === 'students' ? 'active' : '' ?>"><i class="fas fa-list"></i> <span>Registered Students</span></a></li>
                     </ul>
-                    <a href="#" id="transactions-tab" class="<?= $active_tab === 'transactions' ? 'active' : '' ?>"><i class="fas fa-exchange-alt"></i> <span>Transactions</span></a>
+                    <!-- Transactions tab moved here as a top-level item -->
+                    <a href="dashboard.php?tab=transactions" id="transactions-tab" class="<?= $active_tab === 'transactions' ? 'active' : '' ?>"><i class="fas fa-exchange-alt"></i> <span>Transactions</span></a>
                 <?php endif; ?>
                 <a href="notices.php"><i class="fas fa-bell"></i> <span>Notices</span></a>
                 <a href="profile.php"><i class="fas fa-user"></i> <span>Profile</span></a>
@@ -413,7 +377,45 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                     </section>
                 <?php endif; ?>
 
-                <?php if ($active_tab === 'transactions' && $user_role === 'admin'): ?>
+                <?php if ($active_tab === 'add_book'): ?>
+                    <section class="admin-section">
+                        <h2>Add Book</h2>
+                        <form method="POST" id="add-book-form">
+                            <div class="form-group">
+                                <label>Title:</label>
+                                <input type="text" name="title" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Author:</label>
+                                <input type="text" name="author" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Genre:</label>
+                                <select name="genre" required>
+                                    <option value="">Select Genre</option>
+                                    <option value="Fiction">Fiction</option>
+                                    <option value="Non-Fiction">Non-Fiction</option>
+                                    <option value="Science">Science</option>
+                                    <option value="History">History</option>
+                                    <option value="Biography">Biography</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Barcode:</label>
+                                <input type="text" name="barcode" id="barcode_input" required>
+                                <button type="button" id="scan-barcode-btn" class="scan-btn">Scan Barcode</button>
+                            </div>
+                            <div class="form-group">
+                                <label>Book Number:</label>
+                                <input type="text" name="book_number" required>
+                            </div>
+                            <button type="submit" name="add_book">Add Book</button>
+                        </form>
+                    </section>
+                <?php endif; ?>
+
+                <!-- Transactions section moved outside specific tab checks -->
+                <?php if ($active_tab === 'transactions'): ?>
                     <section class="admin-section">
                         <h2>Transactions</h2>
                         <?php
@@ -463,43 +465,6 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                         </div>
                     </section>
                 <?php endif; ?>
-
-                <?php if ($active_tab === 'add_book'): ?>
-                    <section class="admin-section">
-                        <h2>Add Book</h2>
-                        <form method="POST" id="add-book-form">
-                            <div class="form-group">
-                                <label>Title:</label>
-                                <input type="text" name="title" required>
-                            </div>
-                            <div class="form-group">
-                                <label>Author:</label>
-                                <input type="text" name="author" required>
-                            </div>
-                            <div class="form-group">
-                                <label>Genre:</label>
-                                <select name="genre" required>
-                                    <option value="">Select Genre</option>
-                                    <option value="Fiction">Fiction</option>
-                                    <option value="Non-Fiction">Non-Fiction</option>
-                                    <option value="Science">Science</option>
-                                    <option value="History">History</option>
-                                    <option value="Biography">Biography</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label>Barcode:</label>
-                                <input type="text" name="barcode" id="barcode_input" required>
-                                <button type="button" id="scan-barcode-btn" class="scan-btn">Scan Barcode</button>
-                            </div>
-                            <div class="form-group">
-                                <label>Book Number:</label>
-                                <input type="text" name="book_number" required>
-                            </div>
-                            <button type="submit" name="add_book">Add Book</button>
-                        </form>
-                    </section>
-                <?php endif; ?>
             <?php endif; ?>
         </div>
     </div>
@@ -519,14 +484,6 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
             e.preventDefault();
             studentsMenu.style.display = studentsMenu.style.display === 'block' ? 'none' : 'block';
         });
-
-        const transactionsTab = document.getElementById('transactions-tab');
-        if (transactionsTab) {
-            transactionsTab.addEventListener('click', function (e) {
-                e.preventDefault();
-                window.location.href = 'dashboard.php?tab=transactions';
-            });
-        }
         <?php endif; ?>
 
         const transactionsChart = document.getElementById('transactionsChart');
