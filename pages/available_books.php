@@ -101,6 +101,10 @@ $available_books = $query->fetchAll();
         .styled-table tr:nth-child(even) {
             background-color: #f2f2f2;
         }
+        /* Center the Remove button in the Action column */
+        .styled-table td:nth-child(5) {
+            text-align: center;
+        }
 
         /* Button styling */
         .remove-btn, .reset-btn {
