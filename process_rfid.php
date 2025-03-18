@@ -82,6 +82,7 @@ try {
             $trans_query = $pdo->prepare("INSERT INTO transactions (user_id, book_id, action, transaction_date, due_date) VALUES (?, ?, 'BORROW', NOW(), ?)");
             $trans_query->execute([$user_id, $book_id, $due_date]);
         } catch (PDOException $e) {
+            error_log("Borrow INSERT failed: " . $e->getMessage());
             $trans_query = $pdo->prepare("INSERT INTO transactions (user_id, book_id, action, borrowed_date, due_date) VALUES (?, ?, 'BORROW', NOW(), ?)");
             $trans_query->execute([$user_id, $book_id, $due_date]);
         }
@@ -107,14 +108,15 @@ try {
         $update_book = $pdo->prepare("UPDATE books SET available = available + 1 WHERE id = ?");
         $update_book->execute([$book_id]);
 
-        // Insert a new RETURN transaction
+        // Insert a new RETURN transaction with fallback
         try {
             $trans_query = $pdo->prepare("INSERT INTO transactions (user_id, book_id, action, transaction_date) VALUES (?, ?, 'RETURN', NOW())");
             $trans_query->execute([$user_id, $book_id]);
         } catch (PDOException $e) {
-            $trans_query = $pdo->prepare("INSERT INTO transactions (user_id, book_id, action, transaction_date) VALUES (?, ?, 'RETURN', NOW())");
-            $trans_query->execute([$user_id, $book_id]); // Retry with same query (log error instead)
-            error_log("Fallback failed: " . $e->getMessage());
+            error_log("Return INSERT failed: " . $e->getMessage());
+            // Fallback to returned_date if transaction_date fails
+            $trans_query = $pdo->prepare("INSERT INTO transactions (user_id, book_id, action, returned_date) VALUES (?, ?, 'RETURN', NOW())");
+            $trans_query->execute([$user_id, $book_id]);
         }
 
         $pdo->commit();
