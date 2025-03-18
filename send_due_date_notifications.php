@@ -1,9 +1,8 @@
 <?php
 include 'includes/db.php';
-require 'includes/PHPMailer/src/PHPMailer.php';
-require 'includes/PHPMailer/src/SMTP.php';
-require 'includes/PHPMailer/src/Exception.php';
 
+// Use Composer autoloader instead of direct requires
+require 'vendor/autoload.php'; // Assumes vendor/ is in the root directory
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
