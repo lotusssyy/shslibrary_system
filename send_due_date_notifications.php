@@ -43,7 +43,7 @@ if (!$isTargetTime) {
 error_log("Sending notifications at " . date('Y-m-d H:i:s') . " PHT");
 
 // Query for books due today
-$query_today = $pdo->prepare("SELECT t.user_id, u.email, b.title, t.due_date 
+$query_today = $pdo->prepare("SELECT t.user_id, u.email, b.title, t.due_date, b.genre 
                              FROM transactions t 
                              JOIN users u ON t.user_id = u.id 
                              JOIN books b ON t.book_id = b.id 
@@ -53,7 +53,7 @@ $query_today->execute();
 $due_today = $query_today->fetchAll(PDO::FETCH_ASSOC);
 
 // Query for books due tomorrow (one day before reminder)
-$query_tomorrow = $pdo->prepare("SELECT t.user_id, u.email, b.title, t.due_date 
+$query_tomorrow = $pdo->prepare("SELECT t.user_id, u.email, b.title, t.due_date, b.genre 
                                 FROM transactions t 
                                 JOIN users u ON t.user_id = u.id 
                                 JOIN books b ON t.book_id = b.id 
@@ -63,7 +63,7 @@ $query_tomorrow->execute();
 $due_tomorrow = $query_tomorrow->fetchAll(PDO::FETCH_ASSOC);
 
 // Query for overdue books
-$query_overdue = $pdo->prepare("SELECT t.user_id, u.email, b.title, t.due_date 
+$query_overdue = $pdo->prepare("SELECT t.user_id, u.email, b.title, t.due_date, b.genre 
                                FROM transactions t 
                                JOIN users u ON t.user_id = u.id 
                                JOIN books b ON t.book_id = b.id 
@@ -81,12 +81,13 @@ foreach ($due_today as $transaction) {
     $email = $transaction['email'];
     $book_title = $transaction['title'];
     $due_date = $transaction['due_date'];
+    $genre = $transaction['genre'];
 
-    $message = "Your borrowed book '$book_title' is due today ($due_date). Please return it to avoid penalties.";
+    $message = "Your borrowed book '$book_title' (Genre: $genre) is due today ($due_date). Please return it to avoid penalties.";
     $notice_query = $pdo->prepare("INSERT INTO notices (user_id, message, created_at) VALUES (?, ?, NOW())");
     $notice_query->execute([$user_id, $message]);
-    sendEmailNotification($email, $book_title, $due_date, "due today");
-    error_log("Notified $email for book '$book_title' due today");
+    sendEmailNotification($email, $book_title, $due_date, "due today", $genre);
+    error_log("Notified $email for book '$book_title' (Genre: $genre) due today");
 }
 
 // Process reminders for tomorrow
@@ -95,12 +96,13 @@ foreach ($due_tomorrow as $transaction) {
     $email = $transaction['email'];
     $book_title = $transaction['title'];
     $due_date = $transaction['due_date'];
+    $genre = $transaction['genre'];
 
-    $message = "Reminder: Your borrowed book '$book_title' is due tomorrow ($due_date). Please plan to return it.";
+    $message = "Reminder: Your borrowed book '$book_title' (Genre: $genre) is due tomorrow ($due_date). Please plan to return it.";
     $notice_query = $pdo->prepare("INSERT INTO notices (user_id, message, created_at) VALUES (?, ?, NOW())");
     $notice_query->execute([$user_id, $message]);
-    sendEmailNotification($email, $book_title, $due_date, "due tomorrow");
-    error_log("Reminded $email for book '$book_title' due tomorrow");
+    sendEmailNotification($email, $book_title, $due_date, "due tomorrow", $genre);
+    error_log("Reminded $email for book '$book_title' (Genre: $genre) due tomorrow");
 }
 
 // Process notifications for overdue books
@@ -109,16 +111,17 @@ foreach ($overdue_books as $transaction) {
     $email = $transaction['email'];
     $book_title = $transaction['title'];
     $due_date = $transaction['due_date'];
+    $genre = $transaction['genre'];
 
     $overdue_days = floor((strtotime('now') - strtotime($due_date)) / (60 * 60 * 24));
-    $message = "Your borrowed book '$book_title' is overdue since $due_date ($overdue_days day(s) late). Please return it immediately to avoid penalties.";
+    $message = "Your borrowed book '$book_title' (Genre: $genre) is overdue since $due_date ($overdue_days day(s) late). Please return it immediately to avoid penalties.";
     $notice_query = $pdo->prepare("INSERT INTO notices (user_id, message, created_at) VALUES (?, ?, NOW())");
     $notice_query->execute([$user_id, $message]);
-    sendEmailNotification($email, $book_title, $due_date, "overdue");
-    error_log("Notified $email for overdue book '$book_title' ($overdue_days days late)");
+    sendEmailNotification($email, $book_title, $due_date, "overdue", $genre);
+    error_log("Notified $email for overdue book '$book_title' (Genre: $genre) ($overdue_days days late)");
 }
 
-function sendEmailNotification($email, $book_title, $due_date, $context) {
+function sendEmailNotification($email, $book_title, $due_date, $context, $genre) {
     $mail = new PHPMailer(true);
     try {
         $mail->isSMTP();
@@ -138,15 +141,15 @@ function sendEmailNotification($email, $book_title, $due_date, $context) {
                 ? "Reminder: Book Due Tomorrow: $book_title"
                 : "Overdue Book: $book_title");
         $body = ($context === "due today") 
-            ? "Dear Student,\n\nYour borrowed book '$book_title' is due today ($due_date). Please return it to avoid penalties.\n\nRegards,\nSHS Library System"
+            ? "Dear Student,\n\nYour borrowed book '$book_title' (Genre: $genre) is due today ($due_date). Please return it to avoid penalties.\n\nRegards,\nSHS Library System"
             : ($context === "due tomorrow" 
-                ? "Dear Student,\n\nThis is a reminder that your borrowed book '$book_title' is due tomorrow ($due_date). Please plan to return it.\n\nRegards,\nSHS Library System"
-                : "Dear Student,\n\nYour borrowed book '$book_title' is overdue since $due_date. Please return it immediately to avoid penalties.\n\nRegards,\nSHS Library System");
+                ? "Dear Student,\n\nThis is a reminder that your borrowed book '$book_title' (Genre: $genre) is due tomorrow ($due_date). Please plan to return it.\n\nRegards,\nSHS Library System"
+                : "Dear Student,\n\nYour borrowed book '$book_title' (Genre: $genre) is overdue since $due_date. Please return it immediately to avoid penalties.\n\nRegards,\nSHS Library System");
         $mail->Subject = $subject;
         $mail->Body = $body;
 
         $mail->send();
-        error_log("{$context} email sent to $email for '$book_title'");
+        error_log("{$context} email sent to $email for '$book_title' (Genre: $genre)");
     } catch (Exception $e) {
         error_log("{$context} email could not be sent. Mailer Error: {$mail->ErrorInfo}");
     }

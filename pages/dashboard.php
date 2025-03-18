@@ -377,7 +377,7 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                     </section>
                 <?php endif; ?>
 
-                <?php if ($active_tab === 'add_book'): ?>
+            <?php if ($active_tab === 'add_book'): ?>
                     <section class="admin-section">
                         <h2>Add Book</h2>
                         <form method="POST" id="add-book-form">
@@ -398,6 +398,7 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                                     <option value="Science">Science</option>
                                     <option value="History">History</option>
                                     <option value="Biography">Biography</option>
+                                    <option value="Narrative">Narrative</option>
                                 </select>
                             </div>
                             <div class="form-group">
@@ -412,7 +413,7 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                             <button type="submit" name="add_book">Add Book</button>
                         </form>
                     </section>
-                <?php endif; ?>
+            <?php endif; ?>
 
                 <!-- Transactions section moved outside specific tab checks -->
                 <?php if ($active_tab === 'transactions'): ?>

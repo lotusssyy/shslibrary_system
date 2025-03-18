@@ -68,6 +68,9 @@ try {
         case 'BIOGRAPHY':
             $due_date = date('Y-m-d', strtotime("+7 days"));
             break;
+        case 'NARRATIVE':
+            $due_date = date('Y-m-d', strtotime("+1 day"));
+            break;
     }
 
     if (strtoupper($action) == "BORROW") {
