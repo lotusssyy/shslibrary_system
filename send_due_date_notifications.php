@@ -1,8 +1,8 @@
 <?php
 include 'includes/db.php';
 
-// Use Composer autoloader
-require 'vendor/autoload.php';
+// Use Composer autoloader instead of direct requires
+require 'vendor/autoload.php'; // Assumes vendor/ is in the root directory
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
@@ -13,8 +13,8 @@ ini_set('display_errors', 1); // Enable for debugging
 date_default_timezone_set('Asia/Manila');
 
 // Get current time in PHT
-$currentHour = (int) date('H');
-$currentMinute = (int) date('i');
+$currentHour = (int) date('H'); // Hour in 24-hour format (0-23)
+$currentMinute = (int) date('i'); // Minutes (0-59)
 $currentDate = date('Y-m-d');
 error_log("Current PHT: " . date('Y-m-d H:i:s'));
 
@@ -24,20 +24,20 @@ $targetTimes = [6, 17, 0]; // 6:00 AM, 5:00 PM, 12:00 AM
 // Check if current time matches one of the target times (within a 10-minute window)
 $isTargetTime = false;
 foreach ($targetTimes as $targetHour) {
-    if ($currentHour === $targetHour && $currentMinute <= 10) {
+    if ($currentHour === $targetHour && $currentMinute <= 10) { // Run within first 10 minutes of the hour
         $isTargetTime = true;
         break;
     }
+    // Special case for 12:00 AM (midnight transition)
     if ($targetHour === 0 && $currentHour === 23 && $currentMinute >= 50) {
-        $isTargetTime = true;
+        $isTargetTime = true; // Allow late execution for midnight
     }
 }
 
-// Temporarily bypass time check for testing
-// if (!$isTargetTime) {
-//     error_log("Not a target notification time. Exiting.");
-//     exit;
-// }
+if (!$isTargetTime) {
+    error_log("Not a target notification time. Exiting.");
+    exit; // Exit if not one of the target times
+}
 
 error_log("Sending notifications at " . date('Y-m-d H:i:s') . " PHT");
 
@@ -127,7 +127,7 @@ function sendEmailNotification($email, $book_title, $due_date, $context, $genre)
         $mail->Host = 'smtp.gmail.com';
         $mail->SMTPAuth = true;
         $mail->Username = 'libraryuclm@gmail.com';
-        $mail->Password = 'crof wdsk aiky vays';
+        $mail->Password = 'crof wdsk aiky vays'; // Verify App Password
         $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
         $mail->Port = 587;
 
