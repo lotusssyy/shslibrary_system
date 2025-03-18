@@ -29,29 +29,51 @@ $notices = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <link rel="stylesheet" href="../css/styles.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
     <style>
-        .notice-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-            background-color: #fff;
+        .notices-list {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
         }
-        .notice-table th, .notice-table td {
-            padding: 12px;
-            text-align: left;
-            border: 1px solid #ddd;
+        .notice-bubble {
+            background-color: #f1f8ff;
+            border-radius: 15px;
+            padding: 15px;
+            margin-bottom: 15px;
+            position: relative;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            border-left: 5px solid #003366;
+            transition: transform 0.2s ease;
         }
-        .notice-table th {
-            background-color: #003366;
-            color: white;
-            font-weight: bold;
+        .notice-bubble:hover {
+            transform: translateY(-3px);
         }
-        .notice-table tr:nth-child(even) {
-            background-color: #f2f2f2;
+        .notice-bubble::before {
+            content: '';
+            position: absolute;
+            top: 20px;
+            left: -10px;
+            width: 0;
+            height: 0;
+            border-top: 10px solid transparent;
+            border-bottom: 10px solid transparent;
+            border-right: 10px solid #003366;
+        }
+        .notice-message {
+            font-size: 1em;
+            color: #333;
+            margin-bottom: 5px;
+            word-wrap: break-word;
+        }
+        .notice-timestamp {
+            font-size: 0.8em;
+            color: #777;
+            text-align: right;
         }
         .no-notices {
             margin-top: 20px;
             color: #666;
             font-style: italic;
+            text-align: center;
         }
         .main-content {
             padding: 20px;
@@ -116,22 +138,16 @@ $notices = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 <?php if (empty($notices)): ?>
                     <p class="no-notices">No notices available.</p>
                 <?php else: ?>
-                    <table class="notice-table">
-                        <thead>
-                            <tr>
-                                <th>Message</th>
-                                <th>Date</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($notices as $notice): ?>
-                                <tr>
-                                    <td><?php echo htmlspecialchars($notice['message']); ?></td>
-                                    <td><?php echo htmlspecialchars($notice['created_at']); ?></td>
-                                </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
+                    <?php foreach ($notices as $notice): ?>
+                        <div class="notice-bubble">
+                            <div class="notice-message">
+                                <?php echo htmlspecialchars($notice['message']); ?>
+                            </div>
+                            <div class="notice-timestamp">
+                                <?php echo htmlspecialchars($notice['created_at']); ?>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
                 <?php endif; ?>
             </section>
         </div>
