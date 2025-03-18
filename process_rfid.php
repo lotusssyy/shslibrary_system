@@ -40,7 +40,7 @@ try {
     $book_query->execute([$barcode]);
     $book = $book_query->fetch(PDO::FETCH_ASSOC);
     if (!$book) {
-        throw new Exception("BOOK_NOT_FOUND");
+        throw new Exception("BOOK_NOT_FOUND: Barcode $barcode not found in database");
     }
     $book_id = $book['id'];
     $book_genre = $book['genre'];
@@ -94,12 +94,12 @@ try {
             throw new Exception("BOOK_ALREADY_RETURNED");
         }
 
-        // Simplified check for existing BORROW transaction
+        // Check if this book was borrowed by the user
         $check_borrow = $pdo->prepare("SELECT id FROM transactions WHERE user_id = ? AND book_id = ? AND action = 'BORROW' ORDER BY id DESC LIMIT 1");
         $check_borrow->execute([$user_id, $book_id]);
         $borrow_record = $check_borrow->fetch(PDO::FETCH_ASSOC);
         if (!$borrow_record) {
-            throw new Exception("NO_BORROW_RECORD");
+            throw new Exception("NO_BORROW_RECORD: No borrow record found for user $user_id and book $book_id");
         }
         error_log("Debug - Found BORROW record ID: " . $borrow_record['id']);
 
