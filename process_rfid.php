@@ -4,13 +4,12 @@ require 'includes/db.php';
 
 // Include PHPMailer (adjust path as needed)
 require 'vendor/autoload.php'; // If using Composer
-// OR: require 'path/to/PHPMailerAutoload.php'; // If manually installed
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
 // Disable displaying errors to client, log them instead
 error_reporting(E_ALL);
-ini_set('display_errors', 0); // Set to 0 to prevent errors from being sent to client
+ini_set('display_errors', 0);
 
 $rfid_number = isset($_POST['rfid_number']) ? trim($_POST['rfid_number']) : '';
 $action = isset($_POST['action']) ? trim($_POST['action']) : '';
@@ -47,7 +46,7 @@ try {
     $book_genre = $book['genre'];
     $book_title = $book['title'];
     $book_available = $book['available'];
-    $total_quantity = $book['total_quantity'];
+
 
     // Calculate due date based on genre
     $due_date = date('Y-m-d', strtotime("+7 days"));
@@ -76,7 +75,7 @@ try {
         $update_book = $pdo->prepare("UPDATE books SET available = available - 1 WHERE id = ?");
         $update_book->execute([$book_id]);
 
-        $trans_query = $pdo->prepare("INSERT INTO transactions (user_id, book_id, action, borrowed_date, due_date) VALUES (?, ?, 'BORROW', NOW(), ?)");
+        $trans_query = $pdo->prepare("INSERT INTO transactions (user_id, book_id, action, transaction_date, due_date) VALUES (?, ?, 'BORROW', NOW(), ?)");
         $trans_query->execute([$user_id, $book_id, $due_date]);
 
         $pdo->commit();
@@ -88,7 +87,21 @@ try {
         }
 
         // Check if a BORROW transaction exists
-        $check_borrow = $pdo->prepare("SELECT id FROM transactions WHERE user_id = ? AND book_id = ? AND action = 'BORROW' AND returned_date IS NULL");
+        $check_borrow = $pdo->prepare("
+            SELECT id 
+            FROM transactions 
+            WHERE user_id = ? 
+            AND book_id = ? 
+            AND action = 'BORROW' 
+            AND NOT EXISTS (
+                SELECT 1 
+                FROM transactions t2 
+                WHERE t2.book_id = transactions.book_id 
+                AND t2.user_id = transactions.user_id 
+                AND t2.action = 'RETURN' 
+                AND t2.id > transactions.id
+            )
+        ");
         $check_borrow->execute([$user_id, $book_id]);
         $borrow_record = $check_borrow->fetch(PDO::FETCH_ASSOC);
         if (!$borrow_record) {
@@ -99,9 +112,9 @@ try {
         $update_book = $pdo->prepare("UPDATE books SET available = available + 1 WHERE id = ?");
         $update_book->execute([$book_id]);
 
-        // Update the existing BORROW transaction with returned_date
-        $trans_query = $pdo->prepare("UPDATE transactions SET returned_date = NOW() WHERE id = ?");
-        $trans_query->execute([$borrow_record['id']]);
+        // Insert a new RETURN transaction
+        $trans_query = $pdo->prepare("INSERT INTO transactions (user_id, book_id, action, transaction_date) VALUES (?, ?, 'RETURN', NOW())");
+        $trans_query->execute([$user_id, $book_id]);
 
         $pdo->commit();
         echo "RETURN_SUCCESS";
@@ -114,7 +127,7 @@ try {
     $error_message = $e->getMessage();
     error_log("Transaction failed: $error_message");
     echo $error_message;
-    exit; // Ensure no further output after error
+    exit;
 }
 
 function notifyStudent($user_id, $email, $book_title, $action, $due_date) {
@@ -134,7 +147,7 @@ function notifyStudent($user_id, $email, $book_title, $action, $due_date) {
         $mail->Host = 'smtp.gmail.com';
         $mail->SMTPAuth = true;
         $mail->Username = 'libraryuclm@gmail.com';
-        $mail->Password = 'crof wdsk aiky vays'; // Verify App Password
+        $mail->Password = 'crof wdsk aiky vays';
         $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
         $mail->Port = 587;
 
@@ -154,7 +167,6 @@ function notifyStudent($user_id, $email, $book_title, $action, $due_date) {
         error_log("Email sent to $email for $action of '$book_title'");
     } catch (Exception $e) {
         error_log("Email failed: " . $e->getMessage());
-        // Do not echo the error to prevent it from being sent to NodeMCU
     }
 }
 ?>
