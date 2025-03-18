@@ -48,6 +48,8 @@ try {
     $book_available = $book['available'];
     $total_quantity = $book['total_quantity'];
 
+    error_log("Debug - User ID: $user_id, Book ID: $book_id, Available: $book_available, Total Quantity: $total_quantity");
+
     // Calculate due date based on genre
     $due_date = date('Y-m-d', strtotime("+7 days"));
     switch (strtoupper($book_genre)) {
@@ -80,7 +82,6 @@ try {
             $trans_query = $pdo->prepare("INSERT INTO transactions (user_id, book_id, action, transaction_date, due_date) VALUES (?, ?, 'BORROW', NOW(), ?)");
             $trans_query->execute([$user_id, $book_id, $due_date]);
         } catch (PDOException $e) {
-            // Fallback to borrowed_date if transaction_date fails
             $trans_query = $pdo->prepare("INSERT INTO transactions (user_id, book_id, action, borrowed_date, due_date) VALUES (?, ?, 'BORROW', NOW(), ?)");
             $trans_query->execute([$user_id, $book_id, $due_date]);
         }
@@ -93,35 +94,28 @@ try {
             throw new Exception("BOOK_ALREADY_RETURNED");
         }
 
-        // Check if a BORROW transaction exists
-        $check_borrow = $pdo->prepare("
-            SELECT id 
-            FROM transactions 
-            WHERE user_id = ? 
-            AND book_id = ? 
-            AND action = 'BORROW' 
-            AND NOT EXISTS (
-                SELECT 1 
-                FROM transactions t2 
-                WHERE t2.book_id = transactions.book_id 
-                AND t2.user_id = transactions.user_id 
-                AND t2.action = 'RETURN' 
-                AND t2.id > transactions.id
-            )
-        ");
+        // Simplified check for existing BORROW transaction
+        $check_borrow = $pdo->prepare("SELECT id FROM transactions WHERE user_id = ? AND book_id = ? AND action = 'BORROW' ORDER BY id DESC LIMIT 1");
         $check_borrow->execute([$user_id, $book_id]);
         $borrow_record = $check_borrow->fetch(PDO::FETCH_ASSOC);
         if (!$borrow_record) {
             throw new Exception("NO_BORROW_RECORD");
         }
+        error_log("Debug - Found BORROW record ID: " . $borrow_record['id']);
 
         // Update the book availability
         $update_book = $pdo->prepare("UPDATE books SET available = available + 1 WHERE id = ?");
         $update_book->execute([$book_id]);
 
         // Insert a new RETURN transaction
-        $trans_query = $pdo->prepare("INSERT INTO transactions (user_id, book_id, action, transaction_date) VALUES (?, ?, 'RETURN', NOW())");
-        $trans_query->execute([$user_id, $book_id]);
+        try {
+            $trans_query = $pdo->prepare("INSERT INTO transactions (user_id, book_id, action, transaction_date) VALUES (?, ?, 'RETURN', NOW())");
+            $trans_query->execute([$user_id, $book_id]);
+        } catch (PDOException $e) {
+            $trans_query = $pdo->prepare("INSERT INTO transactions (user_id, book_id, action, transaction_date) VALUES (?, ?, 'RETURN', NOW())");
+            $trans_query->execute([$user_id, $book_id]); // Retry with same query (log error instead)
+            error_log("Fallback failed: " . $e->getMessage());
+        }
 
         $pdo->commit();
         echo "RETURN_SUCCESS";
