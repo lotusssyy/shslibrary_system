@@ -1,30 +1,29 @@
 <?php
 header("Content-Type: text/plain");
 require 'includes/db.php';
-require 'vendor/autoload.php';
+
+// Include PHPMailer (adjust path as needed)
+require 'vendor/autoload.php'; // If using Composer
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
+// Disable displaying errors to client, log them instead
 error_reporting(E_ALL);
 ini_set('display_errors', 0);
-
-// Set timezone to PHT
-date_default_timezone_set('Asia/Manila');
 
 $rfid_number = isset($_POST['rfid_number']) ? trim($_POST['rfid_number']) : '';
 $action = isset($_POST['action']) ? trim($_POST['action']) : '';
 $barcode = isset($_POST['barcode']) ? trim($_POST['barcode']) : '';
-$borrow_time = isset($_POST['borrow_time']) ? trim($_POST['borrow_time']) : date('Y-m-d H:i:s'); // Fallback to current PHT
 
 if (empty($rfid_number) || empty($action) || empty($barcode) || !in_array(strtoupper($action), ['BORROW', 'RETURN'])) {
-    error_log("Missing parameters: rfid_number=$rfid_number, action=$action, barcode=$barcode, borrow_time=$borrow_time");
+    error_log("Missing parameters: rfid_number=$rfid_number, action=$action, barcode=$barcode");
     echo "MISSING_PARAMETERS";
     exit;
 }
 
 try {
     $pdo->beginTransaction();
-    error_log("Starting transaction for RFID: $rfid_number, Action: $action, Barcode: $barcode, Borrow Time: $borrow_time");
+    error_log("Starting transaction for RFID: $rfid_number, Action: $action, Barcode: $barcode");
 
     // Validate user
     $user_query = $pdo->prepare("SELECT id, email FROM users WHERE rfid_number = ?");
@@ -51,26 +50,26 @@ try {
 
     error_log("Debug - User ID: $user_id, Book ID: $book_id, Available: $book_available, Total Quantity: $total_quantity");
 
-    // Calculate due date based on genre using borrow_time
-    $due_date = date('Y-m-d', strtotime($borrow_time . " +7 days"));
+    // Calculate due date based on genre
+    $due_date = date('Y-m-d', strtotime("+7 days"));
     switch (strtoupper($book_genre)) {
         case 'FICTION':
-            $due_date = date('Y-m-d', strtotime($borrow_time . " +14 days"));
+            $due_date = date('Y-m-d', strtotime("+14 days"));
             break;
         case 'NON-FICTION':
-            $due_date = date('Y-m-d', strtotime($borrow_time . " +21 days"));
+            $due_date = date('Y-m-d', strtotime("+21 days"));
             break;
         case 'SCIENCE':
-            $due_date = date('Y-m-d', strtotime($borrow_time . " +10 days"));
+            $due_date = date('Y-m-d', strtotime("+10 days"));
             break;
         case 'HISTORY':
-            $due_date = date('Y-m-d', strtotime($borrow_time . " +14 days"));
+            $due_date = date('Y-m-d', strtotime("+14 days"));
             break;
         case 'BIOGRAPHY':
-            $due_date = date('Y-m-d', strtotime($borrow_time . " +7 days"));
+            $due_date = date('Y-m-d', strtotime("+7 days"));
             break;
         case 'NARRATIVE':
-            $due_date = date('Y-m-d', strtotime($borrow_time . " +1 day"));
+            $due_date = date('Y-m-d', strtotime("+1 day"));
             break;
     }
 
@@ -81,19 +80,19 @@ try {
         $update_book = $pdo->prepare("UPDATE books SET available = available - 1 WHERE id = ?");
         $update_book->execute([$book_id]);
 
-        // Insert transaction with borrow_time
+        // Try inserting with transaction_date, fallback to borrowed_date
         try {
-            $trans_query = $pdo->prepare("INSERT INTO transactions (user_id, book_id, action, transaction_date, due_date) VALUES (?, ?, 'BORROW', ?, ?)");
-            $trans_query->execute([$user_id, $book_id, $borrow_time, $due_date]);
+            $trans_query = $pdo->prepare("INSERT INTO transactions (user_id, book_id, action, transaction_date, due_date) VALUES (?, ?, 'BORROW', NOW(), ?)");
+            $trans_query->execute([$user_id, $book_id, $due_date]);
         } catch (PDOException $e) {
             error_log("Borrow INSERT failed: " . $e->getMessage());
-            $trans_query = $pdo->prepare("INSERT INTO transactions (user_id, book_id, action, borrowed_date, due_date) VALUES (?, ?, 'BORROW', ?, ?)");
-            $trans_query->execute([$user_id, $book_id, $borrow_time, $due_date]);
+            $trans_query = $pdo->prepare("INSERT INTO transactions (user_id, book_id, action, borrowed_date, due_date) VALUES (?, ?, 'BORROW', NOW(), ?)");
+            $trans_query->execute([$user_id, $book_id, $due_date]);
         }
 
         $pdo->commit();
         echo "BORROW_SUCCESS";
-        notifyStudent($user_id, $user_email, $book_title, "borrowed", $due_date, $borrow_time);
+        notifyStudent($user_id, $user_email, $book_title, "borrowed", $due_date);
     } elseif (strtoupper($action) == "RETURN") {
         if ($book_available >= $total_quantity) {
             throw new Exception("BOOK_ALREADY_RETURNED");
@@ -112,20 +111,20 @@ try {
         $update_book = $pdo->prepare("UPDATE books SET available = available + 1 WHERE id = ?");
         $update_book->execute([$book_id]);
 
-        // Insert return transaction with current time (or borrow_time for consistency)
-        $return_time = date('Y-m-d H:i:s'); // Use current PHT for return
+        // Insert a new RETURN transaction with fallback
         try {
-            $trans_query = $pdo->prepare("INSERT INTO transactions (user_id, book_id, action, transaction_date) VALUES (?, ?, 'RETURN', ?)");
-            $trans_query->execute([$user_id, $book_id, $return_time]);
+            $trans_query = $pdo->prepare("INSERT INTO transactions (user_id, book_id, action, transaction_date) VALUES (?, ?, 'RETURN', NOW())");
+            $trans_query->execute([$user_id, $book_id]);
         } catch (PDOException $e) {
             error_log("Return INSERT failed: " . $e->getMessage());
-            $trans_query = $pdo->prepare("INSERT INTO transactions (user_id, book_id, action, returned_date) VALUES (?, ?, 'RETURN', ?)");
-            $trans_query->execute([$user_id, $book_id, $return_time]);
+            // Fallback to returned_date if transaction_date fails
+            $trans_query = $pdo->prepare("INSERT INTO transactions (user_id, book_id, action, returned_date) VALUES (?, ?, 'RETURN', NOW())");
+            $trans_query->execute([$user_id, $book_id]);
         }
 
         $pdo->commit();
         echo "RETURN_SUCCESS";
-        notifyStudent($user_id, $user_email, $book_title, "returned", null, $return_time);
+        notifyStudent($user_id, $user_email, $book_title, "returned", null);
     } else {
         throw new Exception("INVALID_ACTION");
     }
@@ -137,7 +136,7 @@ try {
     exit;
 }
 
-function notifyStudent($user_id, $email, $book_title, $action, $due_date, $timestamp) {
+function notifyStudent($user_id, $email, $book_title, $action, $due_date) {
     global $pdo;
 
     error_log("Sending notification to $email for $action of '$book_title'");
@@ -145,8 +144,8 @@ function notifyStudent($user_id, $email, $book_title, $action, $due_date, $times
     $message = ($action === "borrowed") 
         ? "You have borrowed '$book_title'. Due date: $due_date."
         : "You have returned '$book_title'.";
-    $notice_query = $pdo->prepare("INSERT INTO notices (user_id, message, created_at) VALUES (?, ?, ?)");
-    $notice_query->execute([$user_id, $message, $timestamp]);
+    $notice_query = $pdo->prepare("INSERT INTO notices (user_id, message, created_at) VALUES (?, ?, NOW())");
+    $notice_query->execute([$user_id, $message]);
 
     $mail = new PHPMailer(true);
     try {
