@@ -134,7 +134,7 @@ $notices = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 <h1>Notices</h1>
                 <p>Welcome back, <?php echo htmlspecialchars($user['first_name'] . ' ' . $user['last_name']); ?>!</p>
             </header>
-            <section class="notices-list">
+            <section class="notices-list" id="notices-list">
                 <?php if (empty($notices)): ?>
                     <p class="no-notices">No notices available.</p>
                 <?php else: ?>
@@ -144,7 +144,11 @@ $notices = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                 <?php echo htmlspecialchars($notice['message']); ?>
                             </div>
                             <div class="notice-timestamp">
-                                <?php echo htmlspecialchars($notice['created_at']); ?>
+                                <?php 
+                                // Convert created_at to 12-hour format if not already
+                                $timestamp = strtotime($notice['created_at']);
+                                echo htmlspecialchars(date('Y-m-d h:i:s A', $timestamp)); 
+                                ?>
                             </div>
                         </div>
                     <?php endforeach; ?>
@@ -154,6 +158,7 @@ $notices = $stmt->fetchAll(PDO::FETCH_ASSOC);
     </div>
 
     <script>
+        // Submenu toggle functionality
         const booksTab = document.getElementById('books-tab');
         const booksMenu = document.getElementById('books-menu');
         booksTab.addEventListener('click', function (e) {
@@ -169,6 +174,40 @@ $notices = $stmt->fetchAll(PDO::FETCH_ASSOC);
             studentsMenu.style.display = studentsMenu.style.display === 'block' ? 'none' : 'block';
         });
         <?php endif; ?>
+
+        // Dynamic notice refreshing
+        function fetchNotices() {
+            fetch('fetch_notices.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: 'user_id=<?php echo $user_id; ?>'
+            })
+            .then(response => response.json())
+            .then(data => {
+                const noticesList = document.getElementById('notices-list');
+                noticesList.innerHTML = '';
+                if (data.length === 0) {
+                    noticesList.innerHTML = '<p class="no-notices">No notices available.</p>';
+                } else {
+                    data.forEach(notice => {
+                        const bubble = document.createElement('div');
+                        bubble.className = 'notice-bubble';
+                        bubble.innerHTML = `
+                            <div class="notice-message">${notice.message}</div>
+                            <div class="notice-timestamp">${notice.created_at}</div>
+                        `;
+                        noticesList.appendChild(bubble);
+                    });
+                }
+            })
+            .catch(error => console.error('Error fetching notices:', error));
+        }
+
+        // Initial fetch and periodic refresh every 5 seconds
+        fetchNotices();
+        setInterval(fetchNotices, 5000);
     </script>
 </body>
 </html>
