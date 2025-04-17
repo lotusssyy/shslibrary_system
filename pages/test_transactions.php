@@ -1,3 +1,4 @@
+```php
 <?php
 include '../includes/db.php';
 session_start();
@@ -25,6 +26,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_test_transaction'
             ':user_id' => $user_id,
             ':book_id' => $book_id,
             ':action' => $action,
+            ':transaction_type' => $action, // Matches action for simplicity
             ':borrowed_date' => $action === 'BORROW' ? $transaction_date : null,
             ':due_date' => $action === 'BORROW' ? $due_date : null,
             ':returned_date' => $action === 'RETURN' ? $transaction_date : null
@@ -34,6 +36,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_test_transaction'
         $error_message = "Error adding test transaction: " . $e->getMessage();
         error_log($error_message);
     }
+}
+
+// Fetch users and books for dropdowns
+try {
+    $user_query = $pdo->query("SELECT id, first_name, last_name, student_id FROM users WHERE role = 'student'");
+    $users = $user_query->fetchAll(PDO::FETCH_ASSOC);
+
+    $book_query = $pdo->query("SELECT id, title FROM books");
+    $books = $book_query->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    $error_message = "Error fetching users or books: " . $e->getMessage();
+    error_log($error_message);
+    $users = [];
+    $books = [];
 }
 ?>
 <!DOCTYPE html>
@@ -61,12 +77,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_test_transaction'
                 <h2>Add Test Transaction</h2>
                 <form method="POST">
                     <div class="form-group">
-                        <label>User ID:</label>
-                        <input type="number" name="user_id" required>
+                        <label>Student:</label>
+                        <select name="user_id" required>
+                            <option value="">Select Student</option>
+                            <?php foreach ($users as $user): ?>
+                                <option value="<?php echo $user['id']; ?>">
+                                    <?php echo htmlspecialchars($user['first_name'] . ' ' . $user['last_name'] . ' (' . $user['student_id'] . ')'); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
                     </div>
                     <div class="form-group">
-                        <label>Book ID:</label>
-                        <input type="number" name="book_id" required>
+                        <label>Book:</label>
+                        <select name="book_id" required>
+                            <option value="">Select Book</option>
+                            <?php foreach ($books as $book): ?>
+                                <option value="<?php echo $book['id']; ?>">
+                                    <?php echo htmlspecialchars($book['title']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
                     </div>
                     <div class="form-group">
                         <label>Action:</label>
