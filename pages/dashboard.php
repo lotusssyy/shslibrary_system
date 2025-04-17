@@ -440,11 +440,11 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                         <?php
                         try {
                             $query = $pdo->prepare("
-                                SELECT t.id, t.action, t.transaction_date, u.first_name, u.last_name, u.email, u.student_id
+                                SELECT t.id, t.action, COALESCE(t.borrowed_date, t.returned_date) AS transaction_date, u.first_name, u.last_name, u.email, u.student_id
                                 FROM transactions t
                                 JOIN users u ON t.user_id = u.id
                                 WHERE t.action IN ('BORROW', 'RETURN')
-                                ORDER BY t.transaction_date DESC
+                                ORDER BY COALESCE(t.borrowed_date, t.returned_date) DESC
                             ");
                             $query->execute();
                             $transactions = $query->fetchAll(PDO::FETCH_ASSOC);
