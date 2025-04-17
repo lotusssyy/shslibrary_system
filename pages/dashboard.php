@@ -6,6 +6,11 @@ if (!isset($_SESSION['user_id'])) {
     exit;
 }
 
+// Initialize CSRF token
+if (!isset($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+
 $user_id = $_SESSION['user_id'];
 $user_role = $_SESSION['role'] ?? 'student';
 
@@ -99,19 +104,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_book']) && $user_
 
 // Handle resetting transactions (admin only)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reset_transactions']) && $user_role === 'admin') {
-    try {
-        $pdo->beginTransaction();
-        $query = $pdo->prepare("DELETE FROM transactions");
-        $query->execute();
-        $pdo->commit();
-        $success_message = "All transactions have been reset successfully.";
-        error_log("Admin reset all transactions on " . date('Y-m-d H:i:s'));
-    } catch (PDOException $e) {
-        if ($pdo->inTransaction()) {
-            $pdo->rollBack();
-        }
-        $error_message = "Error resetting transactions: " . $e->getMessage();
+    if (!isset($_POST['csrf_token']) || !hash_equals($_POST['csrf_token'], $_SESSION['csrf_token'])) {
+        $error_message = "CSRF token validation failed.";
         error_log($error_message);
+    } else {
+        try {
+            $pdo->beginTransaction();
+            $query = $pdo->prepare("DELETE FROM transactions");
+            $query->execute();
+            $pdo->commit();
+            $success_message = "All transactions have been reset successfully.";
+            $_SESSION['csrf_token'] = bin2hex(random_bytes(32)); // Regenerate CSRF token
+            error_log("Admin reset all transactions on " . date('Y-m-d H:i:s'));
+        } catch (PDOException $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            $error_message = "Error resetting transactions: " . $e->getMessage();
+            error_log($error_message);
+        }
     }
 }
 
@@ -167,6 +178,15 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
             color: #28a745;
             font-size: 0.9rem;
         }
+        .alert-error {
+            padding: 10px;
+            margin: 15px 0;
+            border: 1px solid #dc3545;
+            border-radius: 4px;
+            background-color: #f8d7da;
+            color: #dc3545;
+            font-size: 0.9rem;
+        }
         .transaction-table {
             width: 100%;
             border-collapse: collapse;
@@ -218,7 +238,6 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                         <li><a href="dashboard.php?tab=add_student" class="<?= $active_tab === 'add_student' ? 'active' : '' ?>"><i class="fas fa-user-plus"></i> <span>Add Student</span></a></li>
                         <li><a href="dashboard.php?tab=students" class="<?= $active_tab === 'students' ? 'active' : '' ?>"><i class="fas fa-list"></i> <span>Registered Students</span></a></li>
                     </ul>
-                    <!-- Transactions tab moved here as a top-level item -->
                     <a href="dashboard.php?tab=transactions" id="transactions-tab" class="<?= $active_tab === 'transactions' ? 'active' : '' ?>"><i class="fas fa-exchange-alt"></i> <span>Transactions</span></a>
                 <?php endif; ?>
                 <a href="notices.php"><i class="fas fa-bell"></i> <span>Notices</span></a>
@@ -243,7 +262,7 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
             <?php endif; ?>
 
             <?php if (!empty($error_message)): ?>
-                <div class="alert alert-error">
+                <div class="alert-error">
                     <?php echo htmlspecialchars($error_message); ?>
                 </div>
             <?php endif; ?>
@@ -377,7 +396,7 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                     </section>
                 <?php endif; ?>
 
-            <?php if ($active_tab === 'add_book'): ?>
+                <?php if ($active_tab === 'add_book'): ?>
                     <section class="admin-section">
                         <h2>Add Book</h2>
                         <form method="POST" id="add-book-form">
@@ -413,55 +432,70 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                             <button type="submit" name="add_book">Add Book</button>
                         </form>
                     </section>
-            <?php endif; ?>
+                <?php endif; ?>
 
-                <!-- Transactions section moved outside specific tab checks -->
                 <?php if ($active_tab === 'transactions'): ?>
                     <section class="admin-section">
                         <h2>Transactions</h2>
                         <?php
                         try {
-                            $query = $pdo->query("SELECT t.id, u.student_id, b.title, t.transaction_date, t.status 
-                                                FROM transactions t 
-                                                LEFT JOIN users u ON t.user_id = u.id 
-                                                LEFT JOIN books b ON t.book_id = b.id 
-                                                ORDER BY t.id DESC");
+                            $query = $pdo->prepare("
+                                SELECT t.id, t.action, t.transaction_date, u.first_name, u.last_name, u.email, u.student_id
+                                FROM transactions t
+                                JOIN users u ON t.user_id = u.id
+                                WHERE t.action IN ('BORROW', 'RETURN')
+                                ORDER BY t.transaction_date DESC
+                            ");
+                            $query->execute();
                             $transactions = $query->fetchAll(PDO::FETCH_ASSOC);
                         } catch (PDOException $e) {
                             $error_message = "Error loading transactions: " . $e->getMessage();
                             $transactions = [];
                             error_log($error_message);
                         }
-                        if (empty($transactions)) {
-                            echo "<p class='no-transactions'>No transactions recorded.</p>";
-                        } else {
                         ?>
-                        <table class="transaction-table">
-                            <thead>
-                                <tr>
-                                    <th>Transaction ID</th>
-                                    <th>Student ID</th>
-                                    <th>Book Title</th>
-                                    <th>Transaction Date</th>
-                                    <th>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach ($transactions as $transaction): ?>
+                        <?php if (!empty($success_message)): ?>
+                            <div class="alert-success">
+                                <?php echo htmlspecialchars($success_message); ?>
+                            </div>
+                        <?php endif; ?>
+                        <?php if (!empty($error_message)): ?>
+                            <div class="alert-error">
+                                <?php echo htmlspecialchars($error_message); ?>
+                            </div>
+                        <?php endif; ?>
+                        <?php if (empty($transactions)): ?>
+                            <p class='no-transactions'>No transactions recorded.</p>
+                        <?php else: ?>
+                            <table class="transaction-table">
+                                <thead>
                                     <tr>
-                                        <td><?php echo htmlspecialchars($transaction['id']); ?></td>
-                                        <td><?php echo htmlspecialchars($transaction['student_id'] ?? 'N/A'); ?></td>
-                                        <td><?php echo htmlspecialchars($transaction['title'] ?? 'N/A'); ?></td>
-                                        <td><?php echo htmlspecialchars($transaction['transaction_date'] ?? 'N/A'); ?></td>
-                                        <td><?php echo htmlspecialchars($transaction['status'] ?? 'N/A'); ?></td>
+                                        <th>Student Name</th>
+                                        <th>Email</th>
+                                        <th>Student ID</th>
+                                        <th>Action</th>
+                                        <th>Transaction Date</th>
                                     </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
-                        <?php } ?>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($transactions as $transaction): ?>
+                                        <tr>
+                                            <td><?php echo htmlspecialchars($transaction['first_name'] . ' ' . $transaction['last_name']); ?></td>
+                                            <td><?php echo htmlspecialchars($transaction['email']); ?></td>
+                                            <td><?php echo htmlspecialchars($transaction['student_id'] ?? 'N/A'); ?></td>
+                                            <td><?php echo htmlspecialchars($transaction['action']); ?></td>
+                                            <td><?php echo htmlspecialchars($transaction['transaction_date'] ? date('Y-m-d H:i:s', strtotime($transaction['transaction_date'])) : 'N/A'); ?></td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        <?php endif; ?>
                         <div class="reset-button-container">
                             <form method="POST" style="display:inline;">
-                                <button type="submit" name="reset_transactions" class="reset-btn" onclick="return confirm('Are you sure you want to reset all transactions? This action cannot be undone.');"><i class="fas fa-undo"></i> Reset Transactions</button>
+                                <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
+                                <button type="submit" name="reset_transactions" class="reset-btn" onclick="return confirm('Are you sure you want to reset all transactions? This action cannot be undone.');">
+                                    <i class="fas fa-undo"></i> Reset Transactions
+                                </button>
                             </form>
                         </div>
                     </section>
