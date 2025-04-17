@@ -103,6 +103,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_book']) && $user_
     }
 }
 
+// Handle removing a book (admin only)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['remove_book']) && $user_role === 'admin') {
+    if (!isset($_POST['csrf_token']) || !hash_equals($_POST['csrf_token'], $_SESSION['csrf_token'])) {
+        $error_message = "CSRF token validation failed.";
+        error_log($error_message);
+    } else {
+        $book_id = trim($_POST['book_id']);
+        try {
+            $pdo->beginTransaction();
+            // Check if the book is currently borrowed
+            $query = $pdo->prepare("SELECT available FROM books WHERE id = ?");
+            $query->execute([$book_id]);
+            $book = $query->fetch();
+            if (!$book) {
+                throw new Exception("Book not found.");
+            }
+            if ($book['available'] == 0) {
+                throw new Exception("Cannot remove book: It is currently borrowed.");
+            }
+            // Delete related transactions
+            $query = $pdo->prepare("DELETE FROM transactions WHERE book_id = ?");
+            $query->execute([$book_id]);
+            // Delete the book
+            $query = $pdo->prepare("DELETE FROM books WHERE id = ?");
+            $query->execute([$book_id]);
+            $pdo->commit();
+            $success_message = "Book removed successfully.";
+            $_SESSION['csrf_token'] = bin2hex(random_bytes(32)); // Regenerate CSRF token
+            error_log("Admin removed book ID $book_id on " . date('Y-m-d H:i:s'));
+        } catch (Exception $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            $error_message = "Error removing book: " . $e->getMessage();
+            error_log($error_message);
+        }
+    }
+}
+
 // Handle resetting transactions (admin only)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reset_transactions']) && $user_role === 'admin') {
     if (!isset($_POST['csrf_token']) || !hash_equals($_POST['csrf_token'], $_SESSION['csrf_token'])) {
@@ -122,6 +161,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reset_transactions'])
                 $pdo->rollBack();
             }
             $error_message = "Error resetting transactions: " . $e->getMessage();
+            error_log($error_message);
+        }
+    }
+}
+
+// Handle resetting books (admin only)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reset_books']) && $user_role === 'admin') {
+    if (!isset($_POST['csrf_token']) || !hash_equals($_POST['csrf_token'], $_SESSION['csrf_token'])) {
+        $error_message = "CSRF token validation failed.";
+        error_log($error_message);
+    } else {
+        try {
+            $pdo->beginTransaction();
+            // Delete all transactions to maintain referential integrity
+            $query = $pdo->prepare("DELETE FROM transactions");
+            $query->execute();
+            // Delete all books
+            $query = $pdo->prepare("DELETE FROM books");
+            $query->execute();
+            $pdo->commit();
+            $success_message = "All books have been removed successfully.";
+            $_SESSION['csrf_token'] = bin2hex(random_bytes(32)); // Regenerate CSRF token
+            error_log("Admin reset all books on " . date('Y-m-d H:i:s'));
+        } catch (PDOException $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            $error_message = "Error resetting books: " . $e->getMessage();
             error_log($error_message);
         }
     }
@@ -188,24 +255,26 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
             color: #dc3545;
             font-size: 0.9rem;
         }
-        .transaction-table {
+        .transaction-table, .inventory-table {
             width: 100%;
             border-collapse: collapse;
             margin-top: 15px;
         }
-        .transaction-table th, .transaction-table td {
+        .transaction-table th, .transaction-table td,
+        .inventory-table th, .inventory-table td {
             padding: 10px;
             text-align: left;
             border: 1px solid #ddd;
         }
-        .transaction-table th {
+        .transaction-table th, .inventory-table th {
             background-color: #003366;
             color: white;
         }
-        .transaction-table tr:nth-child(even) {
+        .transaction-table tr:nth-child(even),
+        .inventory-table tr:nth-child(even) {
             background-color: #f2f2f2;
         }
-        .admin-section p.no-transactions {
+        .admin-section p.no-records {
             margin-top: 20px;
         }
         .reset-button-container {
@@ -240,6 +309,7 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                         <li><a href="dashboard.php?tab=students" class="<?= $active_tab === 'students' ? 'active' : '' ?>"><i class="fas fa-list"></i> <span>Registered Students</span></a></li>
                     </ul>
                     <a href="dashboard.php?tab=transactions" id="transactions-tab" class="<?= $active_tab === 'transactions' ? 'active' : '' ?>"><i class="fas fa-exchange-alt"></i> <span>Transactions</span></a>
+                    <a href="dashboard.php?tab=inventory" id="inventory-tab" class="<?= $active_tab === 'inventory' ? 'active' : '' ?>"><i class="fas fa-boxes"></i> <span>Inventory</span></a>
                 <?php endif; ?>
                 <a href="notices.php"><i class="fas fa-bell"></i> <span>Notices</span></a>
                 <a href="profile.php"><i class="fas fa-user"></i> <span>Profile</span></a>
@@ -252,7 +322,7 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
         <!-- Main Content -->
         <div class="main-content">
             <header>
-                <h1><?php echo ucfirst($active_tab === 'dashboard' ? 'Dashboard' : ($active_tab === 'add_student' ? 'Add Student' : ($active_tab === 'add_book' ? 'Add Book' : ($active_tab === 'students' ? 'Registered Students' : ($active_tab === 'transactions' ? 'Transactions' : 'Books'))))); ?></h1>
+                <h1><?php echo ucfirst($active_tab === 'dashboard' ? 'Dashboard' : ($active_tab === 'add_student' ? 'Add Student' : ($active_tab === 'add_book' ? 'Add Book' : ($active_tab === 'students' ? 'Registered Students' : ($active_tab === 'transactions' ? 'Transactions' : ($active_tab === 'inventory' ? 'Inventory' : 'Books')))))); ?></h1>
                 <p>Welcome back, <?php echo htmlspecialchars($user['first_name'] . ' ' . $user['last_name']); ?>!</p>
             </header>
 
@@ -496,6 +566,87 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                                 <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
                                 <button type="submit" name="reset_transactions" class="reset-btn" onclick="return confirm('Are you sure you want to reset all transactions? This action cannot be undone.');">
                                     <i class="fas fa-undo"></i> Reset Transactions
+                                </button>
+                            </form>
+                        </div>
+                    </section>
+                <?php endif; ?>
+
+                <?php if ($active_tab === 'inventory'): ?>
+                    <section class="admin-section">
+                        <h2>Inventory</h2>
+                        <?php
+                        try {
+                            $query = $pdo->prepare("
+                                SELECT id, title, author, genre, barcode, book_number, available, total_quantity, added_at
+                                FROM books
+                                ORDER BY title
+                            ");
+                            $query->execute();
+                            $books = $query->fetchAll(PDO::FETCH_ASSOC);
+                        } catch (PDOException $e) {
+                            $error_message = "Error loading inventory: " . $e->getMessage();
+                            $books = [];
+                            error_log($error_message);
+                        }
+                        ?>
+                        <?php if (!empty($success_message)): ?>
+                            <div class="alert-success">
+                                <?php echo htmlspecialchars($success_message); ?>
+                            </div>
+                        <?php endif; ?>
+                        <?php if (!empty($error_message)): ?>
+                            <div class="alert-error">
+                                <?php echo htmlspecialchars($error_message); ?>
+                            </div>
+                        <?php endif; ?>
+                        <?php if (empty($books)): ?>
+                            <p class='no-records'>No books in the inventory.</p>
+                        <?php else: ?>
+                            <table class="inventory-table">
+                                <thead>
+                                    <tr>
+                                        <th>Title</th>
+                                        <th>Author</th>
+                                        <th>Genre</th>
+                                        <th>Barcode</th>
+                                        <th>Book Number</th>
+                                        <th>Availability</th>
+                                        <th>Total Quantity</th>
+                                        <th>Added At</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($books as $book): ?>
+                                        <tr>
+                                            <td><?php echo htmlspecialchars($book['title']); ?></td>
+                                            <td><?php echo htmlspecialchars($book['author']); ?></td>
+                                            <td><?php echo htmlspecialchars($book['genre']); ?></td>
+                                            <td><?php echo htmlspecialchars($book['barcode']); ?></td>
+                                            <td><?php echo htmlspecialchars($book['book_number']); ?></td>
+                                            <td><?php echo $book['available'] > 0 ? 'Available' : 'Borrowed'; ?></td>
+                                            <td><?php echo htmlspecialchars($book['total_quantity']); ?></td>
+                                            <td><?php echo htmlspecialchars(date('Y-m-d H:i:s', strtotime($book['added_at']))); ?></td>
+                                            <td>
+                                                <form method="POST" style="display:inline;">
+                                                    <input type="hidden" name="book_id" value="<?php echo $book['id']; ?>">
+                                                    <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
+                                                    <button type="submit" name="remove_book" class="remove-btn" onclick="return confirm('Are you sure you want to remove this book?');">
+                                                        <i class="fas fa-trash"></i> Remove
+                                                    </button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        <?php endif; ?>
+                        <div class="reset-button-container">
+                            <form method="POST" style="display:inline;">
+                                <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
+                                <button type="submit" name="reset_books" class="reset-btn" onclick="return confirm('Are you sure you want to remove all books? This action cannot be undone.');">
+                                    <i class="fas fa-undo"></i> Reset Books
                                 </button>
                             </form>
                         </div>

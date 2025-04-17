@@ -1,3 +1,4 @@
+php
 <?php
 include '../includes/db.php';
 session_start();
@@ -9,67 +10,8 @@ if (!isset($_SESSION['user_id'])) {
 $user_id = $_SESSION['user_id'];
 $user_role = $_SESSION['role'] ?? 'user';
 
-// Initialize messages
-$success_message = '';
-$error_message = '';
-
-// Handle book removal (only for admins)
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['remove_book']) && $user_role === 'admin') {
-    $book_number = trim($_POST['book_number']);
-    try {
-        // Start a transaction to ensure data consistency
-        $pdo->beginTransaction();
-
-        // Find the book ID based on book_number
-        $query = $pdo->prepare("SELECT id FROM books WHERE book_number = ?");
-        $query->execute([$book_number]);
-        $book = $query->fetch();
-        if (!$book) {
-            throw new Exception("Book not found.");
-        }
-        $book_id = $book['id'];
-
-        // Delete related transactions
-        $query = $pdo->prepare("DELETE FROM transactions WHERE book_id = ?");
-        $query->execute([$book_id]);
-
-        // Delete the book
-        $query = $pdo->prepare("DELETE FROM books WHERE book_number = ?");
-        $query->execute([$book_number]);
-
-        // Commit the transaction
-        $pdo->commit();
-
-        // Set success message
-        $success_message = "Book removed successfully.";
-    } catch (Exception $e) {
-        // Roll back the transaction on error
-        $pdo->rollBack();
-        $error_message = "Error removing book: " . $e->getMessage();
-        error_log($error_message);
-    }
-}
-
-// Handle resetting books (admin only)
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reset_books']) && $user_role === 'admin') {
-    try {
-        $pdo->beginTransaction();
-        $query = $pdo->prepare("DELETE FROM books");
-        $query->execute();
-        $pdo->commit();
-        $success_message = "All books have been removed successfully.";
-        error_log("Admin reset all books on " . date('Y-m-d H:i:s'));
-    } catch (PDOException $e) {
-        if ($pdo->inTransaction()) {
-            $pdo->rollBack();
-        }
-        $error_message = "Error resetting books: " . $e->getMessage();
-        error_log($error_message);
-    }
-}
-
 // Fetch available books
-$query = $pdo->query("SELECT * FROM books WHERE available = 1");
+$query = $pdo->query("SELECT title, author, genre, book_number FROM books WHERE available = 1");
 $available_books = $query->fetchAll();
 ?>
 
@@ -101,57 +43,6 @@ $available_books = $query->fetchAll();
         .styled-table tr:nth-child(even) {
             background-color: #f2f2f2;
         }
-        /* Center the Remove button in the Action column */
-        .styled-table td:nth-child(5) {
-            text-align: center;
-        }
-
-        /* Button styling */
-        .remove-btn, .reset-btn {
-            background-color: #003366;
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 3px;
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            transition: background-color 0.3s ease;
-            font-size: 0.9rem;
-            vertical-align: middle;
-        }
-        .remove-btn:hover, .reset-btn:hover {
-            background-color: #ffd700;
-        }
-        .remove-btn i, .reset-btn i {
-            margin-right: 0;
-        }
-        @media (min-width: 768px) {
-            .remove-btn, .reset-btn {
-                font-size: 1rem;
-            }
-        }
-
-        /* Success/Error message styling */
-        .alert-success {
-            padding: 10px;
-            margin: 15px 0;
-            border: 1px solid #28a745;
-            border-radius: 4px;
-            background-color: #d4edda;
-            color: #28a745;
-            font-size: 0.9rem;
-        }
-        .alert-error {
-            padding: 10px;
-            margin: 15px 0;
-            border: 1px solid #dc3545;
-            border-radius: 4px;
-            background-color: #f8d7da;
-            color: #dc3545;
-            font-size: 0.9rem;
-        }
 
         /* Search bar styling */
         .search-bar-container {
@@ -171,11 +62,6 @@ $available_books = $query->fetchAll();
             border: 1px solid #ddd;
             border-radius: 4px;
             font-size: 1rem;
-        }
-
-        /* Reset button container */
-        .reset-button-container {
-            margin-top: 15px;
         }
     </style>
 </head>
@@ -205,6 +91,8 @@ $available_books = $query->fetchAll();
                         <li><a href="dashboard.php?tab=add_student"><i class="fas fa-user-plus"></i> <span>Add Student</span></a></li>
                         <li><a href="dashboard.php?tab=students"><i class="fas fa-list"></i> <span>Registered Students</span></a></li>
                     </ul>
+                    <a href="dashboard.php?tab=transactions" id="transactions-tab"><i class="fas fa-exchange-alt"></i> <span>Transactions</span></a>
+                    <a href="dashboard.php?tab=inventory" id="inventory-tab"><i class="fas fa-boxes"></i> <span>Inventory</span></a>
                 <?php endif; ?>
                 <a href="notices.php"><i class="fas fa-bell"></i> <span>Notices</span></a>
                 <a href="profile.php"><i class="fas fa-user"></i> <span>Profile</span></a>
@@ -220,18 +108,6 @@ $available_books = $query->fetchAll();
                 <h1>Available Books</h1>
             </header>
 
-            <?php if (!empty($success_message)): ?>
-                <div class="alert-success">
-                    <?php echo htmlspecialchars($success_message); ?>
-                </div>
-            <?php endif; ?>
-
-            <?php if (!empty($error_message)): ?>
-                <div class="alert-error">
-                    <?php echo htmlspecialchars($error_message); ?>
-                </div>
-            <?php endif; ?>
-
             <section>
                 <div class="search-bar-container">
                     <i class="fas fa-search search-icon"></i>
@@ -244,15 +120,12 @@ $available_books = $query->fetchAll();
                             <th>Author</th>
                             <th>Genre</th>
                             <th>Book Number</th>
-                            <?php if ($user_role === 'admin'): ?>
-                                <th>Action</th>
-                            <?php endif; ?>
                         </tr>
                     </thead>
                     <tbody>
                         <?php if (empty($available_books)): ?>
                             <tr>
-                                <td colspan="<?php echo $user_role === 'admin' ? 5 : 4; ?>">No available books found.</td>
+                                <td colspan="4">No available books found.</td>
                             </tr>
                         <?php else: ?>
                             <?php foreach ($available_books as $book): ?>
@@ -261,26 +134,11 @@ $available_books = $query->fetchAll();
                                     <td><?= htmlspecialchars($book['author']) ?></td>
                                     <td><?= htmlspecialchars($book['genre']) ?></td>
                                     <td><?= htmlspecialchars($book['book_number']) ?></td>
-                                    <?php if ($user_role === 'admin'): ?>
-                                        <td>
-                                            <form method="POST" style="display:inline;">
-                                                <input type="hidden" name="book_number" value="<?= htmlspecialchars($book['book_number']) ?>">
-                                                <button type="submit" name="remove_book" class="remove-btn"><i class="fas fa-trash"></i> Remove</button>
-                                            </form>
-                                        </td>
-                                    <?php endif; ?>
                                 </tr>
                             <?php endforeach; ?>
                         <?php endif; ?>
                     </tbody>
                 </table>
-                <?php if ($user_role === 'admin'): ?>
-                    <div class="reset-button-container">
-                        <form method="POST" style="display:inline;">
-                            <button type="submit" name="reset_books" class="reset-btn" onclick="return confirm('Are you sure you want to remove all books? This action cannot be undone.');"><i class="fas fa-undo"></i> Reset Books</button>
-                        </form>
-                    </div>
-                <?php endif; ?>
             </section>
         </div>
     </div>
