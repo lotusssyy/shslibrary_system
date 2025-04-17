@@ -1,4 +1,4 @@
-```php
+
 <?php
 include '../includes/db.php';
 session_start();
@@ -619,4 +619,3 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
     </script>
 </body>
 </html>
-```

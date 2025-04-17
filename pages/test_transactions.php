@@ -1,4 +1,4 @@
-```php
+
 <?php
 include '../includes/db.php';
 session_start();
@@ -112,4 +112,3 @@ try {
     </div>
 </body>
 </html>
-```
