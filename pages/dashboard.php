@@ -240,7 +240,6 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                         <li><a href="dashboard.php?tab=students" class="<?= $active_tab === 'students' ? 'active' : '' ?>"><i class="fas fa-list"></i> <span>Registered Students</span></a></li>
                     </ul>
                     <a href="dashboard.php?tab=transactions" id="transactions-tab" class="<?= $active_tab === 'transactions' ? 'active' : '' ?>"><i class="fas fa-exchange-alt"></i> <span>Transactions</span></a>
-                    <a href="test_transactions.php" class="<?= $active_tab === 'test_transactions' ? 'active' : '' ?>"><i class="fas fa-vial"></i> <span>Add Test Transaction</span></a>
                 <?php endif; ?>
                 <a href="notices.php"><i class="fas fa-bell"></i> <span>Notices</span></a>
                 <a href="profile.php"><i class="fas fa-user"></i> <span>Profile</span></a>
@@ -253,7 +252,7 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
         <!-- Main Content -->
         <div class="main-content">
             <header>
-                <h1><?php echo ucfirst($active_tab === 'dashboard' ? 'Dashboard' : ($active_tab === 'add_student' ? 'Add Student' : ($active_tab === 'add_book' ? 'Add Book' : ($active_tab === 'students' ? 'Registered Students' : ($active_tab === 'transactions' ? 'Transactions' : ($active_tab === 'test_transactions' ? 'Add Test Transaction' : 'Books')))))); ?></h1>
+                <h1><?php echo ucfirst($active_tab === 'dashboard' ? 'Dashboard' : ($active_tab === 'add_student' ? 'Add Student' : ($active_tab === 'add_book' ? 'Add Book' : ($active_tab === 'students' ? 'Registered Students' : ($active_tab === 'transactions' ? 'Transactions' : 'Books'))))); ?></h1>
                 <p>Welcome back, <?php echo htmlspecialchars($user['first_name'] . ' ' . $user['last_name']); ?>!</p>
             </header>
 
