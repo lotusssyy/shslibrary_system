@@ -24,6 +24,24 @@ $stmt->bindParam(':id', $user_id, PDO::PARAM_INT);
 $stmt->execute();
 $user = $stmt->fetch();
 
+// Fetch data for student dashboard
+if ($user_role === 'student') {
+    // Count borrowed books
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM transactions WHERE user_id = ? AND action = 'BORROW' AND returned_date IS NULL");
+    $stmt->execute([$user_id]);
+    $borrowed_count = $stmt->fetchColumn();
+
+    // Count unread notices
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM notices WHERE user_id = ? AND read_status = 0");
+    $stmt->execute([$user_id]);
+    $unread_notices = $stmt->fetchColumn();
+
+    // Fetch recent books
+    $stmt = $pdo->prepare("SELECT id, title, author FROM books ORDER BY added_at DESC LIMIT 6");
+    $stmt->execute();
+    $recent_books = $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
 // Handle adding a student (admin only)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_student']) && $user_role === 'admin') {
     $first_name = trim($_POST['first_name']);
@@ -271,6 +289,144 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
         .inventory-table th:nth-child(9), .inventory-table td:nth-child(9) {
             text-align: center;
         }
+        /* Welcome Widget */
+        .welcome-widget {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            margin-bottom: 10px;
+        }
+        .quick-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 15px;
+        }
+        .action-btn {
+            padding: 8px 16px;
+            background: #003366;
+            color: white;
+            border-radius: 4px;
+            text-decoration: none;
+            font-size: 0.9rem;
+        }
+        .action-btn:hover {
+            background: #ffd700;
+        }
+        .mini-search {
+            display: flex;
+            gap: 5px;
+        }
+        .mini-search input {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 200px;
+        }
+        .mini-search button {
+            padding: 8px;
+            background: #003366;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .badge {
+            background: #dc3545;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-size: 0.8rem;
+        }
+        /* Recent Books Carousel */
+        .recent-books {
+            margin: 20px 0;
+        }
+        .carousel {
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .carousel-track {
+            display: flex;
+            overflow-x: auto;
+            scroll-behavior: smooth;
+            gap: 15px;
+            padding: 10px 0;
+            scrollbar-width: none;
+        }
+        .carousel-track::-webkit-scrollbar {
+            display: none;
+        }
+        .book-card {
+            flex: 0 0 200px;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 10px;
+            text-align: center;
+            transition: transform 0.2s;
+        }
+        .book-card:hover {
+            transform: scale(1.05);
+        }
+        .book-card img {
+            width: 100%;
+            height: 150px;
+            object-fit: cover;
+            border-radius: 4px;
+        }
+        .book-card h3 {
+            font-size: 1rem;
+            margin: 10px 0 5px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .book-card p {
+            font-size: 0.9rem;
+            color: #666;
+        }
+        .view-btn {
+            display: inline-block;
+            padding: 6px 12px;
+            background: #003366;
+            color: white;
+            border-radius: 4px;
+            text-decoration: none;
+            font-size: 0.9rem;
+        }
+        .view-btn:hover {
+            background: #ffd700;
+        }
+        .carousel-prev, .carousel-next {
+            background: #003366;
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 50%;
+            cursor: pointer;
+            position: absolute;
+            z-index: 1;
+        }
+        .carousel-prev {
+            left: -30px;
+        }
+        .carousel-next {
+            right: -30px;
+        }
+        .carousel-prev:hover, .carousel-next:hover {
+            background: #ffd700;
+        }
     </style>
 </head>
 <body>
@@ -312,10 +468,78 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
 
         <!-- Main Content -->
         <div class="main-content">
-            <header>
-                <h1><?php echo ucfirst($active_tab === 'dashboard' ? 'Dashboard' : ($active_tab === 'add_student' ? 'Add Student' : ($active_tab === 'add_book' ? 'Add Book' : ($active_tab === 'students' ? 'Registered Students' : ($active_tab === 'transactions' ? 'Transactions' : ($active_tab === 'inventory' ? 'Inventory' : 'Books')))))); ?></h1>
-                <p>Welcome back, <?php echo htmlspecialchars($user['first_name'] . ' ' . $user['last_name']); ?>!</p>
-            </header>
+            <?php if ($active_tab === 'dashboard'): ?>
+                <?php if ($user_role === 'student'): ?>
+                    <header>
+                        <div class="welcome-widget">
+                            <img src="../images/default-avatar.png" alt="Profile" class="avatar">
+                            <h1>Hello, <?php echo htmlspecialchars($user['first_name']); ?>!</h1>
+                            <p>Your Library at a Glance</p>
+                            <div class="quick-actions">
+                                <a href="borrowed_books.php" class="action-btn">My Books (<?php echo $borrowed_count; ?>)</a>
+                                <a href="notices.php" class="action-btn">Notices <?php echo $unread_notices ? "<span class='badge'>$unread_notices</span>" : ''; ?></a>
+                                <form action="available_books.php" method="GET" class="mini-search">
+                                    <input type="text" name="search" placeholder="Find a book..." required>
+                                    <button type="submit"><i class="fas fa-search"></i></button>
+                                </form>
+                            </div>
+                        </div>
+                    </header>
+                    <section class="recent-books">
+                        <h2>Recently Added Books</h2>
+                        <div class="carousel">
+                            <button class="carousel-prev"><i class="fas fa-chevron-left"></i></button>
+                            <div class="carousel-track">
+                                <?php if (empty($recent_books)): ?>
+                                    <p>No recent books available.</p>
+                                <?php else: ?>
+                                    <?php foreach ($recent_books as $book): ?>
+                                        <div class="book-card">
+                                            <img src="../images/default-book.png" alt="Cover">
+                                            <h3><?php echo htmlspecialchars($book['title']); ?></h3>
+                                            <p><?php echo htmlspecialchars($book['author']); ?></p>
+                                            <a href="available_books.php" class="view-btn">View Details</a>
+                                        </div>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                            </div>
+                            <button class="carousel-next"><i class="fas fa-chevron-right"></i></button>
+                        </div>
+                    </section>
+                <?php else: ?>
+                    <header>
+                        <h1>Dashboard</h1>
+                        <p>Welcome back, <?php echo htmlspecialchars($user['first_name'] . ' ' . $user['last_name']); ?>!</p>
+                    </header>
+                    <section class="dashboard-cards">
+                        <div class="card">
+                            <h3>Total Students</h3>
+                            <p><?php
+                                $query = $pdo->query("SELECT COUNT(*) FROM users WHERE role = 'student'");
+                                echo $query->fetchColumn();
+                            ?></p>
+                        </div>
+                        <div class="card">
+                            <h3>Total Books</h3>
+                            <p><?php
+                                $query = $pdo->query("SELECT COUNT(*) FROM books");
+                                echo $query->fetchColumn();
+                            ?></p>
+                        </div>
+                        <div class="card">
+                            <h3>Total Transactions</h3>
+                            <p><?php
+                                $query = $pdo->query("SELECT COUNT(*) FROM transactions");
+                                echo $query->fetchColumn();
+                            ?></p>
+                        </div>
+                    </section>
+                    <section class="chart">
+                        <h2>Monthly Transactions</h2>
+                        <canvas id="transactionsChart" style="max-height: 300px;"></canvas>
+                    </section>
+                <?php endif; ?>
+            <?php endif; ?>
 
             <?php if (!empty($success_message)): ?>
                 <div class="alert-success">
@@ -327,36 +551,6 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                 <div class="alert-error">
                     <?php echo htmlspecialchars($error_message); ?>
                 </div>
-            <?php endif; ?>
-
-            <?php if ($active_tab === 'dashboard'): ?>
-                <section class="dashboard-cards">
-                    <div class="card">
-                        <h3>Total Students</h3>
-                        <p><?php
-                            $query = $pdo->query("SELECT COUNT(*) FROM users WHERE role = 'student'");
-                            echo $query->fetchColumn();
-                        ?></p>
-                    </div>
-                    <div class="card">
-                        <h3>Total Books</h3>
-                        <p><?php
-                            $query = $pdo->query("SELECT COUNT(*) FROM books");
-                            echo $query->fetchColumn();
-                        ?></p>
-                    </div>
-                    <div class="card">
-                        <h3>Total Transactions</h3>
-                        <p><?php
-                            $query = $pdo->query("SELECT COUNT(*) FROM transactions");
-                            echo $query->fetchColumn();
-                        ?></p>
-                    </div>
-                </section>
-                <section class="chart">
-                    <h2>Monthly Transactions</h2>
-                    <canvas id="transactionsChart" style="max-height: 300px;"></canvas>
-                </section>
             <?php endif; ?>
 
             <?php if ($user_role === 'admin'): ?>
@@ -425,7 +619,7 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                         } else {
                         ?>
                         <table class="student-table" id="student-table">
-                            <thead>
+                            |<thead>
                                 <tr>
                                     <th>Name</th>
                                     <th>Email</th>
@@ -568,7 +762,7 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                                         <a href="?tab=transactions&page=<?= $page - 1 ?>">Previous</a>
                                     <?php endif; ?>
                                     <?php for ($i = 1; $i <= $total_pages; $i++): ?>
-                                        <a href="?tab=transactions&page=<?= $i ?>" class="<?= $i === $page ? 'active' : '' ?>"><?= $i ?></a>
+                                        <a href="?tab=transactions&page=<?= $i ?>" class="<?= $i === 'page' ? 'active' : '' ?>"><?= $i ?></a>
                                     <?php endfor; ?>
                                     <?php if ($page < $total_pages): ?>
                                         <a href="?tab=transactions&page=<?= $page + 1 ?>">Next</a>
@@ -694,7 +888,7 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                                             <td><?php echo htmlspecialchars($book['book_number']); ?></td>
                                             <td><?php echo $book['available'] > 0 ? 'Available' : 'Borrowed'; ?></td>
                                             <td><?php echo htmlspecialchars($book['total_quantity']); ?></td>
-                                            <td><?php echo htmlspecialchars(date('Y-m-d H:i:s', strtotime($book['added_at']))); ?></td>
+                                            <td><?php echo htmlspecialchars(date('m/d/Y h:i:s A', strtotime($book['added_at']))); ?></td>
                                             <td>
                                                 <div class="action-buttons">
                                                     <form method="GET" action="edit_book.php" class="action-form">
@@ -850,6 +1044,19 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                         }
                     });
                 }, 500);
+            });
+        }
+
+        // Carousel navigation
+        const carousel = document.querySelector('.carousel-track');
+        const prevBtn = document.querySelector('.carousel-prev');
+        const nextBtn = document.querySelector('.carousel-next');
+        if (carousel && prevBtn && nextBtn) {
+            prevBtn.addEventListener('click', () => {
+                carousel.scrollBy({ left: -220, behavior: 'smooth' });
+            });
+            nextBtn.addEventListener('click', () => {
+                carousel.scrollBy({ left: 220, behavior: 'smooth' });
             });
         }
     </script>
