@@ -882,7 +882,6 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                 </script>
 
             <script>
-                        // ... (other scripts remain unchanged)
                 const scanBarcodeBtn = document.getElementById('scan-barcode-btn');
                 if (scanBarcodeBtn) {
                     scanBarcodeBtn.addEventListener('click', function() {
