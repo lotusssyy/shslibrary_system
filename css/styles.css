@@ -32,12 +32,8 @@ body {
 }
 
 .sidebar-header {
-    padding: 40px 20px 20px; /* Increased top padding to shift logo/text down */
+    padding: 20px;
     text-align: center;
-    min-height: 100px; /* Ensure header has enough space */
-    display: flex;
-    align-items: center;
-    justify-content: center;
 }
 
 .sidebar-header h2 {
@@ -50,8 +46,8 @@ body {
 }
 
 .school-logo {
-    width: 48px; /* Slightly larger logo for balance */
-    height: 48px;
+    width: 40px;
+    height: 40px;
 }
 
 .sidebar nav {
@@ -626,13 +622,5 @@ button[type="submit"]:hover, .action-btn:hover {
     }
     .charts {
         grid-template-columns: 1fr;
-    }
-    .sidebar-header {
-        padding: 30px 20px 15px; /* Slightly less top padding on mobile */
-        min-height: 80px;
-    }
-    .school-logo {
-        width: 40px; /* Revert to original size on mobile */
-        height: 40px;
     }
 }
