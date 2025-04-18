@@ -44,176 +44,176 @@ if ($user_role === 'student') {
         $stmt->execute([$user_id]);
         $borrowed_count = $stmt->fetchColumn();
 
-        // Fetch recent books
-        $stmt = $pdo->prepare("SELECT id, title, author FROM books ORDER BY id DESC LIMIT 6");
+        // Fetch recent books with validation
+        $stmt = $pdo->prepare("SELECT id, title, author FROM books WHERE title IS NOT NULL AND author IS NOT NULL ORDER BY id DESC LIMIT 6");
         $stmt->execute();
         $recent_books = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        if (empty($recent_books)) {
+            $error_message = "No recent books found in the database.";
+        }
     } catch (PDOException $e) {
         $error_message = "Database error: Unable to fetch student data.";
         error_log("Student data fetch error: " . $e->getMessage());
     }
 }
 
-// Handle adding a student (admin only)
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_student']) && $user_role === 'admin') {
-    $first_name = trim($_POST['first_name']);
-    $last_name = trim($_POST['last_name']);
-    $email = trim($_POST['email']);
-    $password = password_hash(trim($_POST['password']), PASSWORD_DEFAULT);
-    $rfid_number = trim($_POST['rfid_number']);
-    $student_id = trim($_POST['student_id']);
-    $course = trim($_POST['course']);
-    $year_level = isset($_POST['year_level']) ? (int) trim($_POST['year_level']) : 0;
+// Handle admin actions (unchanged from previous version)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $user_role === 'admin') {
+    if (isset($_POST['add_student'])) {
+        $first_name = trim($_POST['first_name']);
+        $last_name = trim($_POST['last_name']);
+        $email = trim($_POST['email']);
+        $password = password_hash(trim($_POST['password']), PASSWORD_DEFAULT);
+        $rfid_number = trim($_POST['rfid_number']);
+        $student_id = trim($_POST['student_id']);
+        $course = trim($_POST['course']);
+        $year_level = isset($_POST['year_level']) ? (int) trim($_POST['year_level']) : 0;
 
-    try {
-        $check_stmt = $pdo->prepare("SELECT COUNT(*) FROM users WHERE student_id = ?");
-        $check_stmt->execute([$student_id]);
-        if ($check_stmt->fetchColumn() > 0) {
-            $error_message = "Student ID '$student_id' already exists. Please use a unique ID.";
-        } else {
-            $valid_year_levels = [11, 12];
-            if ($year_level === 0 || !in_array($year_level, $valid_year_levels)) {
-                $error_message = "Invalid year level selected. Please choose Grade 11 or Grade 12.";
-                error_log("Validation failed: Invalid year_level: '$year_level'");
+        try {
+            $check_stmt = $pdo->prepare("SELECT COUNT(*) FROM users WHERE student_id = ?");
+            $check_stmt->execute([$student_id]);
+            if ($check_stmt->fetchColumn() > 0) {
+                $error_message = "Student ID '$student_id' already exists. Please use a unique ID.";
             } else {
-                $query = $pdo->prepare("INSERT INTO users (first_name, last_name, email, password, rfid_number, student_id, course, year_level, role) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'student')");
-                $query->execute([$first_name, $last_name, $email, $password, $rfid_number, $student_id, $course, $year_level]);
-                $success_message = "Student added successfully.";
+                $valid_year_levels = [11, 12];
+                if ($year_level === 0 || !in_array($year_level, $valid_year_levels)) {
+                    $error_message = "Invalid year level selected. Please choose Grade 11 or Grade 12.";
+                    error_log("Validation failed: Invalid year_level: '$year_level'");
+                } else {
+                    $query = $pdo->prepare("INSERT INTO users (first_name, last_name, email, password, rfid_number, student_id, course, year_level, role) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'student')");
+                    $query->execute([$first_name, $last_name, $email, $password, $rfid_number, $student_id, $course, $year_level]);
+                    $success_message = "Student added successfully.";
+                }
             }
+        } catch (PDOException $e) {
+            $error_message = "Error adding student: " . $e->getMessage();
+            error_log($error_message);
         }
-    } catch (PDOException $e) {
-        $error_message = "Error adding student: " . $e->getMessage();
-        error_log($error_message);
     }
-}
 
-// Handle removing a student (admin only)
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['remove_student']) && $user_role === 'admin') {
-    $student_id = trim($_POST['student_id']);
-    try {
-        $pdo->beginTransaction();
-        $query = $pdo->prepare("SELECT id FROM users WHERE student_id = ? AND role = 'student'");
-        $query->execute([$student_id]);
-        $student = $query->fetch();
-        if (!$student) {
-            throw new Exception("Student not found.");
-        }
-        $internal_student_id = $student['id'];
-        $query = $pdo->prepare("DELETE FROM transactions WHERE user_id = ?");
-        $query->execute([$internal_student_id]);
-        $query = $pdo->prepare("DELETE FROM notices WHERE user_id = ?");
-        $query->execute([$internal_student_id]);
-        $query = $pdo->prepare("DELETE FROM users WHERE student_id = ? AND role = 'student'");
-        $query->execute([$student_id]);
-        $pdo->commit();
-        $success_message = "Student removed successfully.";
-    } catch (Exception $e) {
-        $pdo->rollBack();
-        $error_message = "Error removing student: " . $e->getMessage();
-        error_log($error_message);
-    }
-}
-
-// Handle adding a book (admin only)
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_book']) && $user_role === 'admin') {
-    $title = trim($_POST['title']);
-    $author = trim($_POST['author']);
-    $genre = trim($_POST['genre']);
-    $barcode = trim($_POST['barcode']);
-    $book_number = trim($_POST['book_number']);
-
-    try {
-        $query = $pdo->prepare("INSERT INTO books (title, author, genre, barcode, book_number, available, total_quantity) VALUES (?, ?, ?, ?, ?, 1, 1)");
-        $query->execute([$title, $author, $genre, $barcode, $book_number]);
-        $success_message = "Book added successfully.";
-    } catch (PDOException $e) {
-        $error_message = "Error adding book: " . $e->getMessage();
-        error_log($error_message);
-    }
-}
-
-// Handle removing a book (admin only)
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['remove_book']) && $user_role === 'admin') {
-    if (!isset($_POST['csrf_token']) || !hash_equals($_POST['csrf_token'], $_SESSION['csrf_token'])) {
-        $error_message = "CSRF token validation failed.";
-        error_log($error_message);
-    } else {
-        $book_id = trim($_POST['book_id']);
+    if (isset($_POST['remove_student'])) {
+        $student_id = trim($_POST['student_id']);
         try {
             $pdo->beginTransaction();
-            $query = $pdo->prepare("SELECT available FROM books WHERE id = ?");
-            $query->execute([$book_id]);
-            $book = $query->fetch();
-            if (!$book) {
-                throw new Exception("Book not found.");
+            $query = $pdo->prepare("SELECT id FROM users WHERE student_id = ? AND role = 'student'");
+            $query->execute([$student_id]);
+            $student = $query->fetch();
+            if (!$student) {
+                throw new Exception("Student not found.");
             }
-            if ($book['available'] == 0) {
-                throw new Exception("Cannot remove book: It is currently borrowed.");
-            }
-            $query = $pdo->prepare("DELETE FROM transactions WHERE book_id = ?");
-            $query->execute([$book_id]);
-            $query = $pdo->prepare("DELETE FROM books WHERE id = ?");
-            $query->execute([$book_id]);
+            $internal_student_id = $student['id'];
+            $query = $pdo->prepare("DELETE FROM transactions WHERE user_id = ?");
+            $query->execute([$internal_student_id]);
+            $query = $pdo->prepare("DELETE FROM notices WHERE user_id = ?");
+            $query->execute([$internal_student_id]);
+            $query = $pdo->prepare("DELETE FROM users WHERE student_id = ? AND role = 'student'");
+            $query->execute([$student_id]);
             $pdo->commit();
-            $success_message = "Book removed successfully.";
-            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-            error_log("Admin removed book ID $book_id on " . date('Y-m-d H:i:s'));
+            $success_message = "Student removed successfully.";
         } catch (Exception $e) {
-            if ($pdo->inTransaction()) {
-                $pdo->rollBack();
-            }
-            $error_message = "Error removing book: " . $e->getMessage();
+            $pdo->rollBack();
+            $error_message = "Error removing student: " . $e->getMessage();
             error_log($error_message);
         }
     }
-}
 
-// Handle resetting transactions (admin only)
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reset_transactions']) && $user_role === 'admin') {
-    if (!isset($_POST['csrf_token']) || !hash_equals($_POST['csrf_token'], $_SESSION['csrf_token'])) {
-        $error_message = "CSRF token validation failed.";
-        error_log($error_message);
-    } else {
+    if (isset($_POST['add_book'])) {
+        $title = trim($_POST['title']);
+        $author = trim($_POST['author']);
+        $genre = trim($_POST['genre']);
+        $barcode = trim($_POST['barcode']);
+        $book_number = trim($_POST['book_number']);
+
         try {
-            $pdo->beginTransaction();
-            $query = $pdo->prepare("DELETE FROM transactions");
-            $query->execute();
-            $pdo->commit();
-            $success_message = "All transactions have been reset successfully.";
-            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-            error_log("Admin reset all transactions on " . date('Y-m-d H:i:s'));
+            $query = $pdo->prepare("INSERT INTO books (title, author, genre, barcode, book_number, available, total_quantity) VALUES (?, ?, ?, ?, ?, 1, 1)");
+            $query->execute([$title, $author, $genre, $barcode, $book_number]);
+            $success_message = "Book added successfully.";
         } catch (PDOException $e) {
-            if ($pdo->inTransaction()) {
-                $pdo->rollBack();
-            }
-            $error_message = "Error resetting transactions: " . $e->getMessage();
+            $error_message = "Error adding book: " . $e->getMessage();
             error_log($error_message);
         }
     }
-}
 
-// Handle resetting books (admin only)
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reset_books']) && $user_role === 'admin') {
-    if (!isset($_POST['csrf_token']) || !hash_equals($_POST['csrf_token'], $_SESSION['csrf_token'])) {
-        $error_message = "CSRF token validation failed.";
-        error_log($error_message);
-    } else {
-        try {
-            $pdo->beginTransaction();
-            $query = $pdo->prepare("DELETE FROM transactions");
-            $query->execute();
-            $query = $pdo->prepare("DELETE FROM books");
-            $query->execute();
-            $pdo->commit();
-            $success_message = "All books have been removed successfully.";
-            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-            error_log("Admin reset all books on " . date('Y-m-d H:i:s'));
-        } catch (PDOException $e) {
-            if ($pdo->inTransaction()) {
-                $pdo->rollBack();
-            }
-            $error_message = "Error resetting books: " . $e->getMessage();
+    if (isset($_POST['remove_book'])) {
+        if (!isset($_POST['csrf_token']) || !hash_equals($_POST['csrf_token'], $_SESSION['csrf_token'])) {
+            $error_message = "CSRF token validation failed.";
             error_log($error_message);
+        } else {
+            $book_id = trim($_POST['book_id']);
+            try {
+                $pdo->beginTransaction();
+                $query = $pdo->prepare("SELECT available FROM books WHERE id = ?");
+                $query->execute([$book_id]);
+                $book = $query->fetch();
+                if (!$book) {
+                    throw new Exception("Book not found.");
+                }
+                if ($book['available'] == 0) {
+                    throw new Exception("Cannot remove book: It is currently borrowed.");
+                }
+                $query = $pdo->prepare("DELETE FROM transactions WHERE book_id = ?");
+                $query->execute([$book_id]);
+                $query = $pdo->prepare("DELETE FROM books WHERE id = ?");
+                $query->execute([$book_id]);
+                $pdo->commit();
+                $success_message = "Book removed successfully.";
+                $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+                error_log("Admin removed book ID $book_id on " . date('Y-m-d H:i:s'));
+            } catch (Exception $e) {
+                if ($pdo->inTransaction()) {
+                    $pdo->rollBack();
+                }
+                $error_message = "Error removing book: " . $e->getMessage();
+                error_log($error_message);
+            }
+        }
+    }
+
+    if (isset($_POST['reset_transactions'])) {
+        if (!isset($_POST['csrf_token']) || !hash_equals($_POST['csrf_token'], $_SESSION['csrf_token'])) {
+            $error_message = "CSRF token validation failed.";
+            error_log($error_message);
+        } else {
+            try {
+                $pdo->beginTransaction();
+                $query = $pdo->prepare("DELETE FROM transactions");
+                $query->execute();
+                $pdo->commit();
+                $success_message = "All transactions have been reset successfully.";
+                $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+                error_log("Admin reset all transactions on " . date('Y-m-d H:i:s'));
+            } catch (PDOException $e) {
+                if ($pdo->inTransaction()) {
+                    $pdo->rollBack();
+                }
+                $error_message = "Error resetting transactions: " . $e->getMessage();
+                error_log($error_message);
+            }
+        }
+    }
+
+    if (isset($_POST['reset_books'])) {
+        if (!isset($_POST['csrf_token']) || !hash_equals($_POST['csrf_token'], $_SESSION['csrf_token'])) {
+            $error_message = "CSRF token validation failed.";
+            error_log($error_message);
+        } else {
+            try {
+                $pdo->beginTransaction();
+                $query = $pdo->prepare("DELETE FROM transactions");
+                $query->execute();
+                $query = $pdo->prepare("DELETE FROM books");
+                $query->execute();
+                $pdo->commit();
+                $success_message = "All books have been removed successfully.";
+                $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+                error_log("Admin reset all books on " . date('Y-m-d H:i:s'));
+            } catch (PDOException $e) {
+                if ($pdo->inTransaction()) {
+                    $pdo->rollBack();
+                }
+                $error_message = "Error resetting books: " . $e->getMessage();
+                error_log($error_message);
+            }
         }
     }
 }
@@ -226,9 +226,7 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - Library System</title>
-    <link rel="stylesheet" href="../css/styles.css">
-    <link rel="stylesheet" href="../css/admin-dashboard.css">
+    <title>Dashboard - SHS Library System</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -268,58 +266,6 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
             margin: 20px;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
-        .form-group .scan-btn {
-            background: #003366;
-            color: white;
-            padding: 8px;
-            border-radius: 5px;
-            margin-top: 10px;
-        }
-        .reset-btn {
-            background: #003366;
-            color: white;
-            padding: 10px 20px;
-            border-radius: 5px;
-            transition: background 0.3s;
-        }
-        .reset-btn:hover {
-            background: #ffd700;
-        }
-        .alert-success, .alert-error {
-            padding: 15px;
-            margin: 20px 0;
-            border-radius: 5px;
-            font-size: 1rem;
-        }
-        .alert-success {
-            background: #d4edda;
-            color: #28a745;
-            border: 1px solid #28a745;
-        }
-        .alert-error {
-            background: #f8d7da;
-            color: #dc3545;
-            border: 1px solid #dc3545;
-        }
-        .transaction-table, .inventory-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-        }
-        .transaction-table th, .transaction-table td,
-        .inventory-table th, .inventory-table td {
-            padding: 12px;
-            border: 1px solid #e5e7eb;
-            text-align: left;
-        }
-        .transaction-table th, .inventory-table th {
-            background: #003366;
-            color: white;
-        }
-        .transaction-table tr:nth-child(even),
-        .inventory-table tr:nth-child(even) {
-            background: #f9fafb;
-        }
         .welcome-widget {
             background: linear-gradient(135deg, #003366 0%, #004080 100%);
             color: white;
@@ -335,6 +281,19 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
             border-radius: 50%;
             border: 3px solid #ffd700;
             object-fit: cover;
+            background: #f3f4f6;
+        }
+        .avatar.error + .fallback-icon {
+            display: block;
+        }
+        .fallback-icon {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 2rem;
+            color: #9ca3af;
+            display: none;
         }
         .quick-actions {
             display: flex;
@@ -412,15 +371,6 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
             border-radius: 8px;
             background: #f3f4f6;
         }
-        .book-card .fallback-icon {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 2rem;
-            color: #9ca3af;
-            display: none;
-        }
         .book-card img.error + .fallback-icon {
             display: block;
         }
@@ -469,48 +419,21 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
         .carousel-prev:hover, .carousel-next:hover {
             background: #ffd700;
         }
-        .dashboard-cards {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
+        .alert-success, .alert-error {
+            padding: 15px;
             margin: 20px 0;
-        }
-        .card {
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            text-align: center;
-            transition: transform 0.3s;
-        }
-        .card:hover {
-            transform: translateY(-5px);
-        }
-        .card h3 {
-            font-size: 1.2rem;
-            color: #1f2937;
-        }
-        .card p {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: #003366;
-        }
-        .pagination {
-            display: flex;
-            gap: 10px;
-            justify-content: center;
-            margin-top: 20px;
-        }
-        .pagination a {
-            padding: 8px 16px;
-            background: #e5e7eb;
-            color: #1f2937;
             border-radius: 5px;
-            text-decoration: none;
+            font-size: 1rem;
         }
-        .pagination a.active, .pagination a:hover {
-            background: #003366;
-            color: white;
+        .alert-success {
+            background: #d4edda;
+            color: #28a745;
+            border: 1px solid #28a745;
+        }
+        .alert-error {
+            background: #f8d7da;
+            color: #dc3545;
+            border: 1px solid #dc3545;
         }
         @media (max-width: 768px) {
             .sidebar {
@@ -576,9 +499,10 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                 <?php if ($user_role === 'student'): ?>
                     <header>
                         <div class="welcome-widget">
-                            <img src="https://picsum.photos/100/100?random=1" alt="Profile" class="avatar" onerror="this class='error'> 
-                                <i class='fas fa-user-circle fallback-icon'></i> 
-                            </img>
+                            <div class="relative inline-block">
+                                <img src="../images/default-avatar.png" alt="Profile" class="avatar" onerror="this.classList.add('error');">
+                                <i class="fas fa-user-circle fallback-icon"></i>
+                            </div>
                             <h1 class="text-2xl font-bold">Hello, <?php echo htmlspecialchars($user['first_name'] ?? 'User'); ?>!</h1>
                             <p class="text-lg">Your Library at a Glance</p>
                             <div class="quick-actions">
@@ -596,12 +520,14 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                             <button class="carousel-prev"><i class="fas fa-chevron-left"></i></button>
                             <div class="carousel-track">
                                 <?php if (empty($recent_books)): ?>
-                                    <p>No recent books available.</p>
+                                    <p>No recent books available. Please check back later.</p>
                                 <?php else: ?>
                                     <?php foreach ($recent_books as $book): ?>
                                         <div class="book-card">
-                                            <img src="https://picsum.photos/200/300?random=<?php echo $book['id']; ?>" alt="Book Cover" onerror="this.classList.add('error');">
-                                            <i class="fas fa-book-open fallback-icon"></i>
+                                            <div class="relative">
+                                                <img src="../images/book-covers/<?php echo $book['id']; ?>.jpg" alt="Book Cover" class="book-cover" onerror="this.src='https://picsum.photos/200/300?random=<?php echo $book['id']; ?>'; this.onerror='this.classList.add(\"error\");'">
+                                                <i class="fas fa-book-open fallback-icon"></i>
+                                            </div>
                                             <h3><?php echo htmlspecialchars($book['title']); ?></h3>
                                             <p><?php echo htmlspecialchars($book['author']); ?></p>
                                             <a href="available_books.php?id=<?php echo $book['id']; ?>" class="view-btn">View Details</a>
@@ -617,10 +543,10 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                         <h1 class="text-3xl font-bold">Admin Dashboard</h1>
                         <p class="text-lg">Welcome back, <?php echo htmlspecialchars($user['first_name'] . ' ' . $user['last_name'] ?? 'Admin'); ?>!</p>
                     </header>
-                    <section class="dashboard-cards">
-                        <div class="card">
-                            <h3>Total Students</h3>
-                            <p><?php
+                    <section class="dashboard-cards grid grid-cols-1 md:grid-cols-3 gap-6 my-6">
+                        <div class="card bg-white p-6 rounded-lg shadow-lg text-center hover:-translate-y-1 transition-transform">
+                            <h3 class="text-lg font-semibold">Total Students</h3>
+                            <p class="text-2xl font-bold text-blue-900"><?php
                                 try {
                                     $query = $pdo->query("SELECT COUNT(*) FROM users WHERE role = 'student'");
                                     echo $query->fetchColumn();
@@ -630,9 +556,9 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                                 }
                             ?></p>
                         </div>
-                        <div class="card">
-                            <h3>Total Books</h3>
-                            <p><?php
+                        <div class="card bg-white p-6 rounded-lg shadow-lg text-center hover:-translate-y-1 transition-transform">
+                            <h3 class="text-lg font-semibold">Total Books</h3>
+                            <p class="text-2xl font-bold text-blue-900"><?php
                                 try {
                                     $query = $pdo->query("SELECT COUNT(*) FROM books");
                                     echo $query->fetchColumn();
@@ -642,9 +568,9 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                                 }
                             ?></p>
                         </div>
-                        <div class="card">
-                            <h3>Total Transactions</h3>
-                            <p><?php
+                        <div class="card bg-white p-6 rounded-lg shadow-lg text-center hover:-translate-y-1 transition-transform">
+                            <h3 class="text-lg font-semibold">Total Transactions</h3>
+                            <p class="text-2xl font-bold text-blue-900"><?php
                                 try {
                                     $query = $pdo->query("SELECT COUNT(*) FROM transactions");
                                     echo $query->fetchColumn();
@@ -663,15 +589,11 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
             <?php endif; ?>
 
             <?php if (!empty($success_message)): ?>
-                <div class="alert-success">
-                    <?php echo htmlspecialchars($success_message); ?>
-                </div>
+                <div class="alert-success"><?php echo htmlspecialchars($success_message); ?></div>
             <?php endif; ?>
 
             <?php if (!empty($error_message)): ?>
-                <div class="alert-error">
-                    <?php echo htmlspecialchars($error_message); ?>
-                </div>
+                <div class="alert-error"><?php echo htmlspecialchars($error_message); ?></div>
             <?php endif; ?>
 
             <?php if ($user_role === 'admin'): ?>
@@ -698,7 +620,7 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                             <div class="form-group">
                                 <label class="block font-medium">RFID Number:</label>
                                 <input type="text" name="rfid_number" id="rfid_input" required class="w-full p-2 border rounded">
-                                <button type="button" id="scan-rfid-btn" class="scan-btn">Scan RFID</button>
+                                <button type="button" id="scan-rfid-btn" class="bg-blue-600 text-white px-4 py-2 rounded mt-2 hover:bg-yellow-500">Scan RFID</button>
                             </div>
                             <div class="form-group">
                                 <label class="block font-medium">Student ID:</label>
@@ -745,27 +667,27 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                             echo "<p>No students registered in the database.</p>";
                         } else {
                         ?>
-                        <table class="student-table" id="student-table">
+                        <table class="w-full border-collapse mt-4">
                             <thead>
-                                <tr>
-                                    <th>Name</th>
-                                    <th>Email</th>
-                                    <th>ID Number</th>
-                                    <th>Course</th>
-                                    <th>Year Level</th>
-                                    <th>Action</th>
+                                <tr class="bg-blue-900 text-white">
+                                    <th class="p-3">Name</th>
+                                    <th class="p-3">Email</th>
+                                    <th class="p-3">ID Number</th>
+                                    <th class="p-3">Course</th>
+                                    <th class="p-3">Year Level</th>
+                                    <th class="p-3">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <?php foreach ($students as $student): ?>
                                     <?php $student_id = htmlspecialchars($student['student_id']); ?>
-                                    <tr>
-                                        <td><?php echo htmlspecialchars($student['first_name'] . ' ' . $student['last_name']); ?></td>
-                                        <td><?php echo htmlspecialchars($student['email']); ?></td>
-                                        <td><?php echo $student_id; ?></td>
-                                        <td><?php echo htmlspecialchars($student['course']); ?></td>
-                                        <td><?php echo htmlspecialchars($student['year_level'] == 11 ? 'Grade 11' : ($student['year_level'] == 12 ? 'Grade 12' : 'Unknown')); ?></td>
-                                        <td>
+                                    <tr class="border-b hover:bg-gray-100">
+                                        <td class="p-3"><?php echo htmlspecialchars($student['first_name'] . ' ' . $student['last_name']); ?></td>
+                                        <td class="p-3"><?php echo htmlspecialchars($student['email']); ?></td>
+                                        <td class="p-3"><?php echo $student_id; ?></td>
+                                        <td class="p-3"><?php echo htmlspecialchars($student['course']); ?></td>
+                                        <td class="p-3"><?php echo htmlspecialchars($student['year_level'] == 11 ? 'Grade 11' : ($student['year_level'] == 12 ? 'Grade 12' : 'Unknown')); ?></td>
+                                        <td class="p-3">
                                             <form method="POST" style="display:inline;">
                                                 <input type="hidden" name="student_id" value="<?php echo $student_id; ?>">
                                                 <button type="submit" name="remove_student" class="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700"><i class="fas fa-trash"></i> Remove</button>
@@ -806,7 +728,7 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                             <div class="form-group">
                                 <label class="block font-medium">Barcode:</label>
                                 <input type="text" name="barcode" id="barcode_input" required class="w-full p-2 border rounded">
-                                <button type="button" id="scan-barcode-btn" class="scan-btn">Scan Barcode</button>
+                                <button type="button" id="scan-barcode-btn" class="bg-blue-600 text-white px-4 py-2 rounded mt-2 hover:bg-yellow-500">Scan Barcode</button>
                             </div>
                             <div class="form-group">
                                 <label class="block font-medium">Book Number:</label>
@@ -849,58 +771,54 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                         }
                         ?>
                         <?php if (!empty($success_message)): ?>
-                            <div class="alert-success">
-                                <?php echo htmlspecialchars($success_message); ?>
-                            </div>
+                            <div class="alert-success"><?php echo htmlspecialchars($success_message); ?></div>
                         <?php endif; ?>
                         <?php if (!empty($error_message)): ?>
-                            <div class="alert-error">
-                                <?php echo htmlspecialchars($error_message); ?>
-                            </div>
+                            <div class="alert-error"><?php echo htmlspecialchars($error_message); ?></div>
                         <?php endif; ?>
                         <?php if (empty($transactions)): ?>
-                            <p class='no-transactions'>No transactions recorded.</p>
+                            <p class="no-transactions">No transactions recorded.</p>
                         <?php else: ?>
-                            <table class="transaction-table">
+                            <table class="w-full border-collapse mt-4">
                                 <thead>
-                                    <tr>
-                                        <th>Student Name</th>
-                                        <th>Email</th>
-                                        <th>Student ID</th>
-                                        <th>Action</th>
-                                        <th>Transaction Date</th>
+                                    <tr class="bg-blue-900 text-white">
+                                        <th class="p-3">Student Name</th>
+                                        <th class="p-3">Email</th>
+                                        <th class="p-3">Student ID</th>
+                                        <th class="p-3">Action</th>
+                                        <th class="p-3">Transaction Date</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <?php foreach ($transactions as $transaction): ?>
-                                        <tr>
-                                            <td><?php echo htmlspecialchars($transaction['first_name'] . ' ' . $transaction['last_name']); ?></td>
-                                            <td><?php echo htmlspecialchars($transaction['email']); ?></td>
-                                            <td><?php echo htmlspecialchars($transaction['student_id'] ?? 'N/A'); ?></td>
-                                            <td><?php echo htmlspecialchars($transaction['action']); ?></td>
-                                            <td><?php echo htmlspecialchars($transaction['transaction_date'] ? date('Y-m-d H:i:s', strtotime($transaction['transaction_date'])) : 'N/A'); ?></td>
+                                        <tr class="border-b hover:bg-gray-100">
+                                            <td class="p-3"><?php echo htmlspecialchars($transaction['first_name'] . ' ' . $transaction['last_name']); ?></td>
+                                            <td class="p-3"><?php echo htmlspecialchars($transaction['email']); ?></td>
+                                            <td class="p-3"><?php echo htmlspecialchars($transaction['student_id'] ?? 'N/A'); ?></td>
+                                            <td class="p-3"><?php echo htmlspecialchars($transaction['action']); ?></td>
+                                            <td class="p-3"><?php echo htmlspecialchars($transaction['transaction_date'] ? date('Y-m-d H:i:s', strtotime($transaction['transaction_date'])) : 'N/A'); ?></td>
                                         </tr>
                                     <?php endforeach; ?>
                                 </tbody>
                             </table>
                             <?php if ($total_pages > 1): ?>
-                                <div class="pagination">
+                                <div class="pagination flex gap-2 justify-center mt-4">
                                     <?php if ($page > 1): ?>
-                                        <a href="?tab=transactions&page=<?= $page - 1 ?>">Previous</a>
+                                        <a href="?tab=transactions&page=<?= $page - 1 ?>" class="px-4 py-2 bg-gray-200 rounded hover:bg-blue-600 hover:text-white">Previous</a>
                                     <?php endif; ?>
                                     <?php for ($i = 1; $i <= $total_pages; $i++): ?>
-                                        <a href="?tab=transactions&page=<?= $i ?>" class="<?= $i === $page ? 'active' : '' ?>"><?= $i ?></a>
+                                        <a href="?tab=transactions&page=<?= $i ?>" class="px-4 py-2 <?= $i === $page ? 'bg-blue-600 text-white' : 'bg-gray-200' ?> rounded hover:bg-blue-600 hover:text-white"><?= $i ?></a>
                                     <?php endfor; ?>
                                     <?php if ($page < $total_pages): ?>
-                                        <a href="?tab=transactions&page=<?= $page + _ef1 ?>">Next</a>
+                                        <a href="?tab=transactions&page=<?= $page + 1 ?>" class="px-4 py-2 bg-gray-200 rounded hover:bg-blue-600 hover:text-white">Next</a>
                                     <?php endif; ?>
                                 </div>
                             <?php endif; ?>
                         <?php endif; ?>
-                        <div class="reset-button-container mt-4">
+                        <div class="mt-4">
                             <form method="POST" style="display:inline;">
                                 <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
-                                <button type="submit" name="reset_transactions" class="reset-btn" onclick="return confirm('Are you sure you want to reset all transactions? This action cannot be undone.');">
+                                <button type="submit" name="reset_transactions" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-yellow-500" onclick="return confirm('Are you sure you want to reset all transactions? This action cannot be undone.');">
                                     <i class="fas fa-undo"></i> Reset Transactions
                                 </button>
                             </form>
@@ -911,7 +829,7 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                 <?php if ($active_tab === 'inventory'): ?>
                     <section class="admin-section">
                         <h2 class="text-xl font-semibold mb-4">Inventory</h2>
-                        <form method="GET" class="filter-form flex space-x-4 mb-4">
+                        <form method="GET" class="flex space-x-4 mb-4">
                             <input type="hidden" name="tab" value="inventory">
                             <input type="hidden" name="page" value="<?= isset($_GET['page']) ? (int)$_GET['page'] : 1 ?>">
                             <div class="form-group">
@@ -984,48 +902,44 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                         }
                         ?>
                         <?php if (!empty($success_message)): ?>
-                            <div class="alert-success">
-                                <?php echo htmlspecialchars($success_message); ?>
-                            </div>
+                            <div class="alert-success"><?php echo htmlspecialchars($success_message); ?></div>
                         <?php endif; ?>
                         <?php if (!empty($error_message)): ?>
-                            <div class="alert-error">
-                                <?php echo htmlspecialchars($error_message); ?>
-                            </div>
+                            <div class="alert-error"><?php echo htmlspecialchars($error_message); ?></div>
                         <?php endif; ?>
                         <?php if (empty($books)): ?>
-                            <p class='no-records'>No books in the inventory.</p>
+                            <p class="no-records">No books in the inventory.</p>
                         <?php else: ?>
-                            <table class="inventory-table">
+                            <table class="w-full border-collapse mt-4">
                                 <thead>
-                                    <tr>
-                                        <th>Title</th>
-                                        <th>Author</th>
-                                        <th>Genre</th>
-                                        <th>Barcode</th>
-                                        <th>Book Number</th>
-                                        <th>Availability</th>
-                                        <th>Total Quantity</th>
-                                        <th>Action</th>
+                                    <tr class="bg-blue-900 text-white">
+                                        <th class="p-3">Title</th>
+                                        <th class="p-3">Author</th>
+                                        <th class="p-3">Genre</th>
+                                        <th class="p-3">Barcode</th>
+                                        <th class="p-3">Book Number</th>
+                                        <th class="p-3">Availability</th>
+                                        <th class="p-3">Total Quantity</th>
+                                        <th class="p-3">Action</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <?php foreach ($books as $book): ?>
-                                        <tr>
-                                            <td><?php echo htmlspecialchars($book['title']); ?></td>
-                                            <td><?php echo htmlspecialchars($book['author']); ?></td>
-                                            <td><?php echo htmlspecialchars($book['genre']); ?></td>
-                                            <td><?php echo htmlspecialchars($book['barcode']); ?></td>
-                                            <td><?php echo htmlspecialchars($book['book_number']); ?></td>
-                                            <td><?php echo $book['available'] > 0 ? 'Available' : 'Borrowed'; ?></td>
-                                            <td><?php echo htmlspecialchars($book['total_quantity']); ?></td>
-                                            <td>
-                                                <div class="action-buttons flex space-x-2">
-                                                    <form method="GET" action="edit_book.php" class="action-form">
+                                        <tr class="border-b hover:bg-gray-100">
+                                            <td class="p-3"><?php echo htmlspecialchars($book['title']); ?></td>
+                                            <td class="p-3"><?php echo htmlspecialchars($book['author']); ?></td>
+                                            <td class="p-3"><?php echo htmlspecialchars($book['genre']); ?></td>
+                                            <td class="p-3"><?php echo htmlspecialchars($book['barcode']); ?></td>
+                                            <td class="p-3"><?php echo htmlspecialchars($book['book_number']); ?></td>
+                                            <td class="p-3"><?php echo $book['available'] > 0 ? 'Available' : 'Borrowed'; ?></td>
+                                            <td class="p-3"><?php echo htmlspecialchars($book['total_quantity']); ?></td>
+                                            <td class="p-3">
+                                                <div class="flex space-x-2">
+                                                    <form method="GET" action="edit_book.php">
                                                         <input type="hidden" name="book_id" value="<?php echo $book['id']; ?>">
                                                         <button type="submit" class="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700"><i class="fas fa-edit"></i> Edit</button>
                                                     </form>
-                                                    <form method="POST" class="action-form">
+                                                    <form method="POST">
                                                         <input type="hidden" name="book_id" value="<?php echo $book['id']; ?>">
                                                         <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
                                                         <button type="submit" name="remove_book" class="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700" onclick="return confirm('Are you sure you want to remove this book?');">
@@ -1039,23 +953,23 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                                 </tbody>
                             </table>
                             <?php if ($total_pages > 1): ?>
-                                <div class="pagination">
+                                <div class="pagination flex gap-2 justify-center mt-4">
                                     <?php if ($page > 1): ?>
-                                        <a href="?tab=inventory&page=<?= $page - 1 ?>&search=<?= urlencode($search) ?>&genre_filter=<?= urlencode($genre_filter) ?>">Previous</a>
+                                        <a href="?tab=inventory&page=<?= $page - 1 ?>&search=<?= urlencode($search) ?>&genre_filter=<?= urlencode($genre_filter) ?>" class="px-4 py-2 bg-gray-200 rounded hover:bg-blue-600 hover:text-white">Previous</a>
                                     <?php endif; ?>
                                     <?php for ($i = 1; $i <= $total_pages; $i++): ?>
-                                        <a href="?tab=inventory&page=<?= $i ?>&search=<?= urlencode($search) ?>&genre_filter=<?= urlencode($genre_filter) ?>" class="<?= $i === $page ? 'active' : '' ?>"><?= $i ?></a>
+                                        <a href="?tab=inventory&page=<?= $i ?>&search=<?= urlencode($search) ?>&genre_filter=<?= urlencode($genre_filter) ?>" class="px-4 py-2 <?= $i === $page ? 'bg-blue-600 text-white' : 'bg-gray-200' ?> rounded hover:bg-blue-600 hover:text-white"><?= $i ?></a>
                                     <?php endfor; ?>
                                     <?php if ($page < $total_pages): ?>
-                                        <a href="?tab=inventory&page=<?= $page + 1 ?>&search=<?= urlencode($search) ?>&genre_filter=<?= urlencode($genre_filter) ?>">Next</a>
+                                        <a href="?tab=inventory&page=<?= $page + 1 ?>&search=<?= urlencode($search) ?>&genre_filter=<?= urlencode($genre_filter) ?>" class="px-4 py-2 bg-gray-200 rounded hover:bg-blue-600 hover:text-white">Next</a>
                                     <?php endif; ?>
                                 </div>
                             <?php endif; ?>
                         <?php endif; ?>
-                        <div class="reset-button-container mt-4">
+                        <div class="mt-4">
                             <form method="POST" style="display:inline;">
                                 <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
-                                <button type="submit" name="reset_books" class="reset-btn" onclick="return confirm('Are you sure you want to remove all books? This action cannot be undone.');">
+                                <button type="submit" name="reset_books" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-yellow-500" onclick="return confirm('Are you sure you want to remove all books? This action cannot be undone.');">
                                     <i class="fas fa-undo"></i> Reset Books
                                 </button>
                             </form>
@@ -1084,7 +998,7 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
         });
         <?php endif; ?>
 
-        // Enhanced Transactions Chart
+        // Transactions Chart
         const transactionsChart = document.getElementById('transactionsChart');
         if (transactionsChart) {
             fetch('../api/getMonthlyTransactions.php')
@@ -1094,11 +1008,11 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                     new Chart(ctx, {
                         type: 'line',
                         data: {
-                            labels: data.labels,
+                            labels: data.labels || ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
                             datasets: [
                                 {
                                     label: 'Borrow Transactions',
-                                    data: data.borrow_values,
+                                    data: data.borrow_values || [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                                     borderColor: '#003366',
                                     backgroundColor: 'rgba(0, 51, 102, 0.2)',
                                     borderWidth: 2,
@@ -1108,7 +1022,7 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                                 },
                                 {
                                     label: 'Return Transactions',
-                                    data: data.return_values,
+                                    data: data.return_values || [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                                     borderColor: '#ffd700',
                                     backgroundColor: 'rgba(255, 215, 0, 0.2)',
                                     borderWidth: 2,
@@ -1131,18 +1045,12 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                             },
                             plugins: {
                                 legend: { display: true, position: 'top' },
-                                tooltip: {
-                                    enabled: true,
-                                    mode: 'index',
-                                    intersect: false,
-                                    backgroundColor: 'rgba(0, 51, 102, 0.8)',
-                                    titleFont: { size: 14 },
-                                    bodyFont: { size: 12 }
-                                }
+                                tooltip: { enabled: true, mode: 'index', intersect: false }
                             }
                         }
                     });
-                });
+                })
+                .catch(error => console.error('Error fetching chart data:', error));
         }
 
         // RFID Scan
@@ -1171,6 +1079,12 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                             alert("No RFID detected within 20 seconds.");
                             clearInterval(pollRFID);
                         }
+                    })
+                    .catch(error => {
+                        rfidInput.value = "";
+                        alert("Error scanning RFID.");
+                        clearInterval(pollRFID);
+                        console.error('RFID scan error:', error);
                     });
                 }, 500);
             });
@@ -1202,6 +1116,12 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                             alert("No barcode detected within 20 seconds.");
                             clearInterval(pollBarcode);
                         }
+                    })
+                    .catch(error => {
+                        barcodeInput.value = "";
+                        alert("Error scanning barcode.");
+                        clearInterval(pollBarcode);
+                        console.error('Barcode scan error:', error);
                     });
                 }, 500);
             });
@@ -1225,7 +1145,6 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                 clearInterval(autoScroll);
             });
 
-            // Auto-scroll every 5 seconds
             autoScroll = setInterval(() => {
                 if (carousel.scrollLeft + carousel.clientWidth >= carousel.scrollWidth) {
                     carousel.scrollTo({ left: 0, behavior: 'smooth' });
@@ -1234,7 +1153,6 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                 }
             }, 5000);
 
-            // Pause auto-scroll on hover
             carousel.addEventListener('mouseenter', () => clearInterval(autoScroll));
             carousel.addEventListener('mouseleave', () => {
                 autoScroll = setInterval(() => {
