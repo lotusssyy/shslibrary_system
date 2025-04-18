@@ -255,7 +255,8 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
             <div class="sidebar-header">
                 <h2>
                     <img src="../images/logo.png" alt="School Logo" class="school-logo">
-                    SHS Library
+                    SHS 
+                    Library
                 </h2>
             </div>
             <nav>
