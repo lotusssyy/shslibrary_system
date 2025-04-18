@@ -119,11 +119,11 @@
 }
 
 /* Button Styling for Edit and Remove */
-.edit-btn, .remove-btn {
+.inventory-table .edit-btn, .inventory-table .remove-btn {
     box-sizing: border-box;
     width: 85px !important; /* Fixed width for consistency */
     height: 34px !important; /* Fixed height for consistency */
-    padding: 8px 12px !important; /* Consistent padding */
+    padding: 7px 10px !important; /* Adjusted padding for tighter look */
     border: none !important;
     border-radius: 4px !important;
     cursor: pointer !important;
@@ -138,36 +138,36 @@
     margin: 0 !important; /* Remove any default margins */
 }
 
-.edit-btn {
+.inventory-table .edit-btn {
     background-color: #28a745 !important; /* Green for Edit */
     color: white !important;
 }
 
-.remove-btn {
+.inventory-table .remove-btn {
     background-color: #003366 !important; /* Blue for Remove */
     color: white !important;
 }
 
-.edit-btn:hover {
+.inventory-table .edit-btn:hover {
     background-color: #218838 !important; /* Darker green on hover */
 }
 
-.remove-btn:hover {
+.inventory-table .remove-btn:hover {
     background-color: #ffd700 !important; /* Yellow on hover */
     color: #003366 !important;
 }
 
-.edit-btn i, .remove-btn i {
+.inventory-table .edit-btn i, .inventory-table .remove-btn i {
     font-size: 0.9rem !important;
     margin-right: 4px !important;
 }
 
 /* Action Buttons Container */
-.action-buttons {
+.inventory-table .action-buttons {
     display: flex !important;
     justify-content: center !important;
     align-items: center !important;
-    gap: 10px !important; /* Space between buttons */
+    gap: 12px !important; /* Increased space between buttons */
     flex-wrap: nowrap !important;
     padding: 0 !important;
 }
@@ -278,9 +278,14 @@
         padding: 10px 20px;
     }
 
-    .edit-btn, .remove-btn {
+    .inventory-table .edit-btn, .inventory-table .remove-btn {
         width: 95px !important;
         height: 38px !important;
         font-size: 1rem !important;
+        padding: 8px 12px !important; /* Slightly larger padding for desktop */
+    }
+
+    .inventory-table .action-buttons {
+        gap: 14px !important; /* Slightly larger gap for desktop */
     }
 }
