@@ -696,17 +696,19 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                                             <td><?php echo htmlspecialchars($book['total_quantity']); ?></td>
                                             <td><?php echo htmlspecialchars(date('Y-m-d H:i:s', strtotime($book['added_at']))); ?></td>
                                             <td>
-                                                <form method="GET" action="edit_book.php" style="display:inline;">
-                                                    <input type="hidden" name="book_id" value="<?php echo $book['id']; ?>">
-                                                    <button type="submit" class="edit-btn"><i class="fas fa-edit"></i> Edit</button>
-                                                </form>
-                                                <form method="POST" style="display:inline;">
-                                                    <input type="hidden" name="book_id" value="<?php echo $book['id']; ?>">
-                                                    <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
-                                                    <button type="submit" name="remove_book" class="remove-btn" onclick="return confirm('Are you sure you want to remove this book?');">
-                                                        <i class="fas fa-trash"></i> Remove
-                                                    </button>
-                                                </form>
+                                                <div class="action-buttons">
+                                                    <form method="GET" action="edit_book.php" style="display:inline;">
+                                                        <input type="hidden" name="book_id" value="<?php echo $book['id']; ?>">
+                                                        <button type="submit" class="edit-btn"><i class="fas fa-edit"></i> Edit</button>
+                                                    </form>
+                                                    <form method="POST" style="display:inline;">
+                                                        <input type="hidden" name="book_id" value="<?php echo $book['id']; ?>">
+                                                        <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
+                                                        <button type="submit" name="remove_book" class="remove-btn" onclick="return confirm('Are you sure you want to remove this book?');">
+                                                            <i class="fas fa-trash"></i> Remove
+                                                        </button>
+                                                    </form>
+                                                </div>
                                             </td>
                                         </tr>
                                     <?php endforeach; ?>
