@@ -230,185 +230,221 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
     <link rel="stylesheet" href="../css/styles.css">
     <link rel="stylesheet" href="../css/admin-dashboard.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            font-family: 'Inter', sans-serif;
+        }
+        .container {
+            display: flex;
+            min-height: 100vh;
+        }
+        .sidebar {
+            background: #003366;
+            color: white;
+            width: 250px;
+            padding: 20px;
+            transition: width 0.3s;
+        }
+        .sidebar a {
+            color: white;
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 5px;
+        }
+        .sidebar a:hover, .sidebar a.active {
+            background: #ffd700;
+            color: #003366;
+        }
+        .main-content {
+            flex: 1;
+            padding: 20px;
+            background: white;
+            border-radius: 10px;
+            margin: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
         .form-group .scan-btn {
-            display: block;
+            background: #003366;
+            color: white;
+            padding: 8px;
+            border-radius: 5px;
             margin-top: 10px;
         }
         .reset-btn {
-            background-color: #003366;
+            background: #003366;
             color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 3px;
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            transition: background-color 0.3s ease;
-            font-size: 0.9rem;
-            vertical-align: middle;
+            padding: 10px 20px;
+            border-radius: 5px;
+            transition: background 0.3s;
         }
         .reset-btn:hover {
-            background-color: #ffd700;
+            background: #ffd700;
         }
-        .reset-btn i {
-            margin-right: 0;
-        }
-        @media (min-width: 768px) {
-            .reset-btn {
-                font-size: 1rem;
-            }
+        .alert-success, .alert-error {
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+            font-size: 1rem;
         }
         .alert-success {
-            padding: 10px;
-            margin: 15px 0;
-            border: 1px solid #28a745;
-            border-radius: 4px;
-            background-color: #d4edda;
+            background: #d4edda;
             color: #28a745;
-            font-size: 0.9rem;
+            border: 1px solid #28a745;
         }
         .alert-error {
-            padding: 10px;
-            margin: 15px 0;
-            border: 1px solid #dc3545;
-            border-radius: 4px;
-            background-color: #f8d7da;
+            background: #f8d7da;
             color: #dc3545;
-            font-size: 0.9rem;
+            border: 1px solid #dc3545;
         }
         .transaction-table, .inventory-table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 15px;
+            margin-top: 20px;
         }
         .transaction-table th, .transaction-table td,
         .inventory-table th, .inventory-table td {
-            padding: 10px;
+            padding: 12px;
+            border: 1px solid #e5e7eb;
             text-align: left;
-            border: 1px solid #ddd;
         }
         .transaction-table th, .inventory-table th {
-            background-color: #003366;
+            background: #003366;
             color: white;
         }
         .transaction-table tr:nth-child(even),
         .inventory-table tr:nth-child(even) {
-            background-color: #f2f2f2;
+            background: #f9fafb;
         }
-        .inventory-table th:nth-child(9), .inventory-table td:nth-child(9) {
-            text-align: center;
-        }
-        /* Welcome Widget */
         .welcome-widget {
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 8px;
+            background: linear-gradient(135deg, #003366 0%, #004080 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 10px;
             text-align: center;
             margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
         .avatar {
-            width: 80px;
-            height: 80px;
+            width: 100px;
+            height: 100px;
             border-radius: 50%;
-            margin-bottom: 10px;
+            border: 3px solid #ffd700;
+            object-fit: cover;
         }
         .quick-actions {
             display: flex;
-            gap: 10px;
+            gap: 15px;
             justify-content: center;
             flex-wrap: wrap;
-            margin-top: 15px;
+            margin-top: 20px;
         }
         .action-btn {
-            padding: 8px 16px;
-            background: #003366;
-            color: white;
-            border-radius: 4px;
+            background: #ffd700;
+            color: #003366;
+            padding: 10px 20px;
+            border-radius: 5px;
             text-decoration: none;
-            font-size: 0.9rem;
+            font-weight: 600;
+            transition: transform 0.2s;
         }
         .action-btn:hover {
-            background: #ffd700;
+            transform: scale(1.05);
         }
         .mini-search {
             display: flex;
-            gap: 5px;
+            gap: 10px;
         }
         .mini-search input {
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            width: 200px;
+            padding: 10px;
+            border: 1px solid #e5e7eb;
+            border-radius: 5px;
+            width: 250px;
         }
         .mini-search button {
-            padding: 8px;
-            background: #003366;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
+            background: #ffd700;
+            color: #003366;
+            padding: 10px;
+            border-radius: 5px;
         }
-        /* Recent Books Carousel */
         .recent-books {
-            margin: 20px 0;
+            margin: 30px 0;
         }
         .carousel {
             position: relative;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 15px;
         }
         .carousel-track {
             display: flex;
             overflow-x: auto;
             scroll-behavior: smooth;
-            gap: 15px;
-            padding: 10px 0;
+            gap: 20px;
+            padding: 15px 0;
             scrollbar-width: none;
         }
         .carousel-track::-webkit-scrollbar {
             display: none;
         }
         .book-card {
-            flex: 0 0 200px;
+            flex: 0 0 220px;
             background: white;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            padding: 10px;
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            padding: 15px;
             text-align: center;
-            transition: transform 0.2s;
+            transition: transform 0.3s, box-shadow 0.3s;
+            position: relative;
         }
         .book-card:hover {
-            transform: scale(1.05);
+            transform: translateY(-5px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
         }
         .book-card img {
             width: 100%;
-            height: 150px;
+            height: 180px;
             object-fit: cover;
-            border-radius: 4px;
+            border-radius: 8px;
+            background: #f3f4f6;
+        }
+        .book-card .fallback-icon {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 2rem;
+            color: #9ca3af;
+            display: none;
+        }
+        .book-card img.error + .fallback-icon {
+            display: block;
         }
         .book-card h3 {
-            font-size: 1rem;
-            margin: 10px 0 5px;
+            font-size: 1.1rem;
+            margin: 15px 0 8px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+            color: #1f2937;
         }
         .book-card p {
             font-size: 0.9rem;
-            color: #666;
+            color: #6b7280;
         }
         .view-btn {
             display: inline-block;
-            padding: 6px 12px;
+            padding: 8px 16px;
             background: #003366;
             color: white;
-            border-radius: 4px;
+            border-radius: 5px;
             text-decoration: none;
             font-size: 0.9rem;
+            transition: background 0.3s;
         }
         .view-btn:hover {
             background: #ffd700;
@@ -417,20 +453,83 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
             background: #003366;
             color: white;
             border: none;
-            padding: 10px;
+            padding: 12px;
             border-radius: 50%;
             cursor: pointer;
             position: absolute;
             z-index: 1;
+            transition: background 0.3s;
         }
         .carousel-prev {
-            left: -30px;
+            left: -40px;
         }
         .carousel-next {
-            right: -30px;
+            right: -40px;
         }
         .carousel-prev:hover, .carousel-next:hover {
             background: #ffd700;
+        }
+        .dashboard-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            transition: transform 0.3s;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        .card h3 {
+            font-size: 1.2rem;
+            color: #1f2937;
+        }
+        .card p {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #003366;
+        }
+        .pagination {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        .pagination a {
+            padding: 8px 16px;
+            background: #e5e7eb;
+            color: #1f2937;
+            border-radius: 5px;
+            text-decoration: none;
+        }
+        .pagination a.active, .pagination a:hover {
+            background: #003366;
+            color: white;
+        }
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 200px;
+            }
+            .carousel-prev, .carousel-next {
+                padding: 8px;
+                left: -30px;
+                right: -30px;
+            }
+            .book-card {
+                flex: 0 0 180px;
+            }
+            .book-card img {
+                height: 150px;
+            }
+            .mini-search input {
+                width: 200px;
+            }
         }
     </style>
 </head>
@@ -439,8 +538,8 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
         <!-- Sidebar -->
         <div class="sidebar">
             <div class="sidebar-header">
-                <h2>
-                    <img src="../images/logo.png" alt="School Logo" class="school-logo">
+                <h2 class="flex items-center gap-2">
+                    <img src="../images/logo.png" alt="School Logo" class="w-10 h-10">
                     SHS LIBRARY
                 </h2>
             </div>
@@ -477,20 +576,22 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                 <?php if ($user_role === 'student'): ?>
                     <header>
                         <div class="welcome-widget">
-                            <img src="../images/default-avatar.png" alt="Profile" class="avatar">
-                            <h1>Hello, <?php echo htmlspecialchars($user['first_name'] ?? 'User'); ?>!</h1>
-                            <p>Your Library at a Glance</p>
+                            <img src="https://picsum.photos/100/100?random=1" alt="Profile" class="avatar" onerror="this class='error'> 
+                                <i class='fas fa-user-circle fallback-icon'></i> 
+                            </img>
+                            <h1 class="text-2xl font-bold">Hello, <?php echo htmlspecialchars($user['first_name'] ?? 'User'); ?>!</h1>
+                            <p class="text-lg">Your Library at a Glance</p>
                             <div class="quick-actions">
                                 <a href="borrowed_books.php" class="action-btn">My Books (<?php echo $borrowed_count; ?>)</a>
                                 <form action="available_books.php" method="GET" class="mini-search">
-                                    <input type="text" name="search" placeholder="Find a book..." required>
+                                    <input type="text" name="search" placeholder="Search books..." required>
                                     <button type="submit"><i class="fas fa-search"></i></button>
                                 </form>
                             </div>
                         </div>
                     </header>
                     <section class="recent-books">
-                        <h2>Recently Added Books</h2>
+                        <h2 class="text-xl font-semibold mb-4">Recently Added Books</h2>
                         <div class="carousel">
                             <button class="carousel-prev"><i class="fas fa-chevron-left"></i></button>
                             <div class="carousel-track">
@@ -499,10 +600,11 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                                 <?php else: ?>
                                     <?php foreach ($recent_books as $book): ?>
                                         <div class="book-card">
-                                            <img src="../images/default-book.png" alt="Cover">
+                                            <img src="https://picsum.photos/200/300?random=<?php echo $book['id']; ?>" alt="Book Cover" onerror="this.classList.add('error');">
+                                            <i class="fas fa-book-open fallback-icon"></i>
                                             <h3><?php echo htmlspecialchars($book['title']); ?></h3>
                                             <p><?php echo htmlspecialchars($book['author']); ?></p>
-                                            <a href="available_books.php" class="view-btn">View Details</a>
+                                            <a href="available_books.php?id=<?php echo $book['id']; ?>" class="view-btn">View Details</a>
                                         </div>
                                     <?php endforeach; ?>
                                 <?php endif; ?>
@@ -512,8 +614,8 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                     </section>
                 <?php else: ?>
                     <header>
-                        <h1>Dashboard</h1>
-                        <p>Welcome back, <?php echo htmlspecialchars($user['first_name'] . ' ' . $user['last_name'] ?? 'Admin'); ?>!</p>
+                        <h1 class="text-3xl font-bold">Admin Dashboard</h1>
+                        <p class="text-lg">Welcome back, <?php echo htmlspecialchars($user['first_name'] . ' ' . $user['last_name'] ?? 'Admin'); ?>!</p>
                     </header>
                     <section class="dashboard-cards">
                         <div class="card">
@@ -554,8 +656,8 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                         </div>
                     </section>
                     <section class="chart">
-                        <h2>Monthly Transactions</h2>
-                        <canvas id="transactionsChart" style="max-height: 300px;"></canvas>
+                        <h2 class="text-xl font-semibold mb-4">Monthly Transactions</h2>
+                        <canvas id="transactionsChart" style="max-height: 400px;"></canvas>
                     </section>
                 <?php endif; ?>
             <?php endif; ?>
@@ -575,36 +677,36 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
             <?php if ($user_role === 'admin'): ?>
                 <?php if ($active_tab === 'add_student'): ?>
                     <section class="admin-section">
-                        <h2>Add Student</h2>
-                        <form method="POST" id="add-student-form">
+                        <h2 class="text-xl font-semibold mb-4">Add Student</h2>
+                        <form method="POST" id="add-student-form" class="space-y-4">
                             <div class="form-group">
-                                <label>First Name:</label>
-                                <input type="text" name="first_name" required>
+                                <label class="block font-medium">First Name:</label>
+                                <input type="text" name="first_name" required class="w-full p-2 border rounded">
                             </div>
                             <div class="form-group">
-                                <label>Last Name:</label>
-                                <input type="text" name="last_name" required>
+                                <label class="block font-medium">Last Name:</label>
+                                <input type="text" name="last_name" required class="w-full p-2 border rounded">
                             </div>
                             <div class="form-group">
-                                <label>Email:</label>
-                                <input type="email" name="email" required>
+                                <label class="block font-medium">Email:</label>
+                                <input type="email" name="email" required class="w-full p-2 border rounded">
                             </div>
                             <div class="form-group">
-                                <label>Password:</label>
-                                <input type="password" name="password" required>
+                                <label class="block font-medium">Password:</label>
+                                <input type="password" name="password" required class="w-full p-2 border rounded">
                             </div>
                             <div class="form-group">
-                                <label>RFID Number:</label>
-                                <input type="text" name="rfid_number" id="rfid_input" required>
+                                <label class="block font-medium">RFID Number:</label>
+                                <input type="text" name="rfid_number" id="rfid_input" required class="w-full p-2 border rounded">
                                 <button type="button" id="scan-rfid-btn" class="scan-btn">Scan RFID</button>
                             </div>
                             <div class="form-group">
-                                <label>Student ID:</label>
-                                <input type="text" name="student_id" required>
+                                <label class="block font-medium">Student ID:</label>
+                                <input type="text" name="student_id" required class="w-full p-2 border rounded">
                             </div>
                             <div class="form-group">
-                                <label>Course/Strand:</label>
-                                <select name="course" required>
+                                <label class="block font-medium">Course/Strand:</label>
+                                <select name="course" required class="w-full p-2 border rounded">
                                     <option value="">Select Course/Strand</option>
                                     <option value="STEM">STEM</option>
                                     <option value="STEM Maritime">STEM Maritime</option>
@@ -615,21 +717,21 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                                 </select>
                             </div>
                             <div class="form-group">
-                                <label>Year Level:</label>
-                                <select name="year_level" required>
+                                <label class="block font-medium">Year Level:</label>
+                                <select name="year_level" required class="w-full p-2 border rounded">
                                     <option value="">Select Year Level</option>
                                     <option value="11">Grade 11</option>
                                     <option value="12">Grade 12</option>
                                 </select>
                             </div>
-                            <button type="submit" name="add_student">Add Student</button>
+                            <button type="submit" name="add_student" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-yellow-500">Add Student</button>
                         </form>
                     </section>
                 <?php endif; ?>
 
                 <?php if ($active_tab === 'students'): ?>
                     <section class="admin-section">
-                        <h2>Registered Students</h2>
+                        <h2 class="text-xl font-semibold mb-4">Registered Students</h2>
                         <?php
                         try {
                             $query = $pdo->query("SELECT id, first_name, last_name, email, student_id, course, year_level FROM users WHERE role = 'student' ORDER BY last_name, first_name");
@@ -666,7 +768,7 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                                         <td>
                                             <form method="POST" style="display:inline;">
                                                 <input type="hidden" name="student_id" value="<?php echo $student_id; ?>">
-                                                <button type="submit" name="remove_student" class="remove-btn"><i class="fas fa-trash"></i> Remove</button>
+                                                <button type="submit" name="remove_student" class="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700"><i class="fas fa-trash"></i> Remove</button>
                                             </form>
                                         </td>
                                     </tr>
@@ -679,19 +781,19 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
 
                 <?php if ($active_tab === 'add_book'): ?>
                     <section class="admin-section">
-                        <h2>Add Book</h2>
-                        <form method="POST" id="add-book-form">
+                        <h2 class="text-xl font-semibold mb-4">Add Book</h2>
+                        <form method="POST" id="add-book-form" class="space-y-4">
                             <div class="form-group">
-                                <label>Title:</label>
-                                <input type="text" name="title" required>
+                                <label class="block font-medium">Title:</label>
+                                <input type="text" name="title" required class="w-full p-2 border rounded">
                             </div>
                             <div class="form-group">
-                                <label>Author:</label>
-                                <input type="text" name="author" required>
+                                <label class="block font-medium">Author:</label>
+                                <input type="text" name="author" required class="w-full p-2 border rounded">
                             </div>
                             <div class="form-group">
-                                <label>Genre:</label>
-                                <select name="genre" required>
+                                <label class="block font-medium">Genre:</label>
+                                <select name="genre" required class="w-full p-2 border rounded">
                                     <option value="">Select Genre</option>
                                     <option value="Fiction">Fiction</option>
                                     <option value="Non-Fiction">Non-Fiction</option>
@@ -702,22 +804,22 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                                 </select>
                             </div>
                             <div class="form-group">
-                                <label>Barcode:</label>
-                                <input type="text" name="barcode" id="barcode_input" required>
+                                <label class="block font-medium">Barcode:</label>
+                                <input type="text" name="barcode" id="barcode_input" required class="w-full p-2 border rounded">
                                 <button type="button" id="scan-barcode-btn" class="scan-btn">Scan Barcode</button>
                             </div>
                             <div class="form-group">
-                                <label>Book Number:</label>
-                                <input type="text" name="book_number" required>
+                                <label class="block font-medium">Book Number:</label>
+                                <input type="text" name="book_number" required class="w-full p-2 border rounded">
                             </div>
-                            <button type="submit" name="add_book">Add Book</button>
+                            <button type="submit" name="add_book" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-yellow-500">Add Book</button>
                         </form>
                     </section>
                 <?php endif; ?>
 
                 <?php if ($active_tab === 'transactions'): ?>
                     <section class="admin-section">
-                        <h2>Transactions</h2>
+                        <h2 class="text-xl font-semibold mb-4">Transactions</h2>
                         <?php
                         try {
                             $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
@@ -790,12 +892,12 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                                         <a href="?tab=transactions&page=<?= $i ?>" class="<?= $i === $page ? 'active' : '' ?>"><?= $i ?></a>
                                     <?php endfor; ?>
                                     <?php if ($page < $total_pages): ?>
-                                        <a href="?tab=transactions&page=<?= $page + 1 ?>">Next</a>
+                                        <a href="?tab=transactions&page=<?= $page + _ef1 ?>">Next</a>
                                     <?php endif; ?>
                                 </div>
                             <?php endif; ?>
                         <?php endif; ?>
-                        <div class="reset-button-container">
+                        <div class="reset-button-container mt-4">
                             <form method="POST" style="display:inline;">
                                 <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
                                 <button type="submit" name="reset_transactions" class="reset-btn" onclick="return confirm('Are you sure you want to reset all transactions? This action cannot be undone.');">
@@ -808,17 +910,17 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
 
                 <?php if ($active_tab === 'inventory'): ?>
                     <section class="admin-section">
-                        <h2>Inventory</h2>
-                        <form method="GET" class="filter-form">
+                        <h2 class="text-xl font-semibold mb-4">Inventory</h2>
+                        <form method="GET" class="filter-form flex space-x-4 mb-4">
                             <input type="hidden" name="tab" value="inventory">
                             <input type="hidden" name="page" value="<?= isset($_GET['page']) ? (int)$_GET['page'] : 1 ?>">
                             <div class="form-group">
-                                <label>Search:</label>
-                                <input type="text" name="search" value="<?= htmlspecialchars($_GET['search'] ?? '') ?>" placeholder="Search by title or author">
+                                <label class="block font-medium">Search:</label>
+                                <input type="text" name="search" value="<?= htmlspecialchars($_GET['search'] ?? '') ?>" placeholder="Search by title or author" class="p-2 border rounded">
                             </div>
                             <div class="form-group">
-                                <label>Genre:</label>
-                                <select name="genre_filter">
+                                <label class="block font-medium">Genre:</label>
+                                <select name="genre_filter" class="p-2 border rounded">
                                     <option value="">All Genres</option>
                                     <?php
                                     try {
@@ -834,7 +936,7 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                                     <?php endforeach; ?>
                                 </select>
                             </div>
-                            <button type="submit">Filter</button>
+                            <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-yellow-500 self-end">Filter</button>
                         </form>
                         <?php
                         try {
@@ -918,15 +1020,15 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                                             <td><?php echo $book['available'] > 0 ? 'Available' : 'Borrowed'; ?></td>
                                             <td><?php echo htmlspecialchars($book['total_quantity']); ?></td>
                                             <td>
-                                                <div class="action-buttons">
+                                                <div class="action-buttons flex space-x-2">
                                                     <form method="GET" action="edit_book.php" class="action-form">
                                                         <input type="hidden" name="book_id" value="<?php echo $book['id']; ?>">
-                                                        <button type="submit" class="edit-btn"><i class="fas fa-edit"></i> Edit</button>
+                                                        <button type="submit" class="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700"><i class="fas fa-edit"></i> Edit</button>
                                                     </form>
                                                     <form method="POST" class="action-form">
                                                         <input type="hidden" name="book_id" value="<?php echo $book['id']; ?>">
                                                         <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
-                                                        <button type="submit" name="remove_book" class="remove-btn" onclick="return confirm('Are you sure you want to remove this book?');">
+                                                        <button type="submit" name="remove_book" class="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700" onclick="return confirm('Are you sure you want to remove this book?');">
                                                             <i class="fas fa-trash"></i> Remove
                                                         </button>
                                                     </form>
@@ -950,7 +1052,7 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                                 </div>
                             <?php endif; ?>
                         <?php endif; ?>
-                        <div class="reset-button-container">
+                        <div class="reset-button-container mt-4">
                             <form method="POST" style="display:inline;">
                                 <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
                                 <button type="submit" name="reset_books" class="reset-btn" onclick="return confirm('Are you sure you want to remove all books? This action cannot be undone.');">
@@ -965,6 +1067,7 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
     </div>
 
     <script>
+        // Sidebar menu toggle
         const booksTab = document.getElementById('books-tab');
         const booksMenu = document.getElementById('books-menu');
         booksTab.addEventListener('click', function (e) {
@@ -981,6 +1084,7 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
         });
         <?php endif; ?>
 
+        // Enhanced Transactions Chart
         const transactionsChart = document.getElementById('transactionsChart');
         if (transactionsChart) {
             fetch('../api/getMonthlyTransactions.php')
@@ -991,30 +1095,57 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                         type: 'line',
                         data: {
                             labels: data.labels,
-                            datasets: [{
-                                label: 'Borrow Transactions',
-                                data: data.values,
-                                borderColor: 'rgba(52, 152, 219, 1)',
-                                backgroundColor: 'rgba(52, 152, 219, 0.2)',
-                                borderWidth: 2,
-                                fill: true,
-                                pointRadius: 5,
-                                pointBackgroundColor: 'rgba(52, 152, 219, 1)'
-                            }]
+                            datasets: [
+                                {
+                                    label: 'Borrow Transactions',
+                                    data: data.borrow_values,
+                                    borderColor: '#003366',
+                                    backgroundColor: 'rgba(0, 51, 102, 0.2)',
+                                    borderWidth: 2,
+                                    fill: true,
+                                    pointRadius: 5,
+                                    pointBackgroundColor: '#003366'
+                                },
+                                {
+                                    label: 'Return Transactions',
+                                    data: data.return_values,
+                                    borderColor: '#ffd700',
+                                    backgroundColor: 'rgba(255, 215, 0, 0.2)',
+                                    borderWidth: 2,
+                                    fill: true,
+                                    pointRadius: 5,
+                                    pointBackgroundColor: '#ffd700'
+                                }
+                            ]
                         },
                         options: {
                             responsive: true,
                             maintainAspectRatio: false,
                             scales: {
-                                x: { title: { display: true, text: 'Month' } },
-                                y: { title: { display: true, text: 'Number of Transactions' }, beginAtZero: true, ticks: { stepSize: 1 } }
+                                x: { title: { display: true, text: 'Month', font: { size: 14 } } },
+                                y: { 
+                                    title: { display: true, text: 'Number of Transactions', font: { size: 14 } },
+                                    beginAtZero: true,
+                                    ticks: { stepSize: 1 }
+                                }
                             },
-                            plugins: { legend: { display: true } }
+                            plugins: {
+                                legend: { display: true, position: 'top' },
+                                tooltip: {
+                                    enabled: true,
+                                    mode: 'index',
+                                    intersect: false,
+                                    backgroundColor: 'rgba(0, 51, 102, 0.8)',
+                                    titleFont: { size: 14 },
+                                    bodyFont: { size: 12 }
+                                }
+                            }
                         }
                     });
                 });
         }
 
+        // RFID Scan
         const scanRfidBtn = document.getElementById('scan-rfid-btn');
         if (scanRfidBtn) {
             scanRfidBtn.addEventListener('click', function() {
@@ -1045,6 +1176,7 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
             });
         }
 
+        // Barcode Scan
         const scanBarcodeBtn = document.getElementById('scan-barcode-btn');
         if (scanBarcodeBtn) {
             scanBarcodeBtn.addEventListener('click', function() {
@@ -1075,16 +1207,43 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
             });
         }
 
-        // Carousel navigation
+        // Carousel with Auto-Scroll
         const carousel = document.querySelector('.carousel-track');
         const prevBtn = document.querySelector('.carousel-prev');
         const nextBtn = document.querySelector('.carousel-next');
         if (carousel && prevBtn && nextBtn) {
+            let autoScroll;
+            const scrollAmount = 240;
+
             prevBtn.addEventListener('click', () => {
-                carousel.scrollBy({ left: -220, behavior: 'smooth' });
+                carousel.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
+                clearInterval(autoScroll);
             });
+
             nextBtn.addEventListener('click', () => {
-                carousel.scrollBy({ left: 220, behavior: 'smooth' });
+                carousel.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+                clearInterval(autoScroll);
+            });
+
+            // Auto-scroll every 5 seconds
+            autoScroll = setInterval(() => {
+                if (carousel.scrollLeft + carousel.clientWidth >= carousel.scrollWidth) {
+                    carousel.scrollTo({ left: 0, behavior: 'smooth' });
+                } else {
+                    carousel.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+                }
+            }, 5000);
+
+            // Pause auto-scroll on hover
+            carousel.addEventListener('mouseenter', () => clearInterval(autoScroll));
+            carousel.addEventListener('mouseleave', () => {
+                autoScroll = setInterval(() => {
+                    if (carousel.scrollLeft + carousel.clientWidth >= carousel.scrollWidth) {
+                        carousel.scrollTo({ left: 0, behavior: 'smooth' });
+                    } else {
+                        carousel.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+                    }
+                }, 5000);
             });
         }
     </script>
