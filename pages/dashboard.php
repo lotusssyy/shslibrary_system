@@ -279,6 +279,13 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
 
         <!-- Main Content -->
         <div class="main-content">
+            <?php if ($success_message): ?>
+                <div class="alert-success"><?php echo htmlspecialchars($success_message); ?></div>
+            <?php endif; ?>
+            <?php if ($error_message): ?>
+                <div class="alert-error"><?php echo htmlspecialchars($error_message); ?></div>
+            <?php endif; ?>
+
             <?php if ($active_tab === 'dashboard'): ?>
                 <?php if ($user_role === 'student'): ?>
                     <header>
@@ -477,7 +484,7 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                                             </form>
                                         </td>
                                     </tr>
-                            <?php endforeach; ?>
+                                <?php endforeach; ?>
                             </tbody>
                         </table>
                         <?php } ?>
@@ -722,3 +729,144 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                                     </tr>
                                 <?php endforeach; ?>
                             </tbody>
+                        </table>
+                        <?php if ($total_pages > 1): ?>
+                            <div class="pagination">
+                                <?php if ($page > 1): ?>
+                                    <a href="?tab=inventory&page=<?= $page - 1 ?>">Previous</a>
+                                <?php endif; ?>
+                                <?php for ($i = 1; $i <= $total_pages; $i++): ?>
+                                    <a href="?tab=inventory&page=<?= $i ?>" class="<?= $i === $page ? 'active' : '' ?>"><?= $i ?></a>
+                                <?php endfor; ?>
+                                <?php if ($page < $total_pages): ?>
+                                    <a href="?tab=inventory&page=<?= $page + 1 ?>">Next</a>
+                                <?php endif; ?>
+                            </div>
+                        <?php endif; ?>
+                        <?php } ?>
+                        <div class="reset-button-container">
+                            <form method="POST" style="display:inline;">
+                                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token']); ?>">
+                                <button type="submit" name="reset_books" class="reset-btn" onclick="return confirm('Are you sure you want to reset all books? This action cannot be undone.');">
+                                    <i class="fas fa-undo"></i> Reset Books
+                                </button>
+                            </form>
+                        </div>
+                    </section>
+                <?php endif; ?>
+            <?php endif; ?>
+        </div>
+    </div>
+
+    <script>
+        // Chart.js for Monthly Transactions (Admin Dashboard)
+        const ctx = document.getElementById('transactionsChart');
+        if (ctx) {
+            fetch('../fetch_transactions.php')
+                .then(response => response.json())
+                .then(data => {
+                    new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: data.labels,
+                            datasets: [{
+                                label: 'Transactions',
+                                data: data.values,
+                                borderColor: '#003366',
+                                backgroundColor: 'rgba(0, 51, 102, 0.2)',
+                                fill: true
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    title: { display: true, text: 'Number of Transactions' }
+                                },
+                                x: {
+                                    title: { display: true, text: 'Month' }
+                                }
+                            }
+                        }
+                    });
+                })
+                .catch(error => console.error('Error loading chart data:', error));
+        }
+
+        // RFID Scanning
+        const scanRfidBtn = document.getElementById('scan-rfid-btn');
+        if (scanRfidBtn) {
+            scanRfidBtn.addEventListener('click', function() {
+                const rfidInput = document.getElementById('rfid_input');
+                rfidInput.value = "Scanning...";
+                let attempts = 0;
+                const maxAttempts = 40; // 20 seconds at 500ms intervals
+                const pollRFID = setInterval(() => {
+                    fetch('../scan.php', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: 'rfid_scan=true'
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.rfid_number) {
+                            rfidInput.value = data.rfid_number;
+                            clearInterval(pollRFID);
+                        }
+                        attempts++;
+                        if (attempts >= maxAttempts) {
+                            rfidInput.value = "";
+                            alert("No RFID detected within 20 seconds.");
+                            clearInterval(pollRFID);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error scanning RFID:', error);
+                        rfidInput.value = "";
+                        alert("Error scanning RFID.");
+                        clearInterval(pollRFID);
+                    });
+                }, 500);
+            });
+        }
+
+        // Barcode Scanning
+        const scanBarcodeBtn = document.getElementById('scan-barcode-btn');
+        if (scanBarcodeBtn) {
+            scanBarcodeBtn.addEventListener('click', function() {
+                const barcodeInput = document.getElementById('barcode_input');
+                barcodeInput.value = "Scanning...";
+                let attempts = 0;
+                const maxAttempts = 40; // 20 seconds at 500ms intervals
+                const pollBarcode = setInterval(() => {
+                    fetch('../scan.php', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: 'barcode_scan=true'
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.barcode) {
+                            barcodeInput.value = data.barcode;
+                            clearInterval(pollBarcode);
+                        }
+                        attempts++;
+                        if (attempts >= maxAttempts) {
+                            barcodeInput.value = "";
+                            alert("No barcode detected within 20 seconds.");
+                            clearInterval(pollBarcode);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error scanning barcode:', error);
+                        barcodeInput.value = "";
+                        alert("Error scanning barcode.");
+                        clearInterval(pollBarcode);
+                    });
+                }, 500);
+            });
+        }
+    </script>
+</body>
+</html>
