@@ -186,16 +186,19 @@
     display: flex !important;
     gap: 15px !important;
     margin-bottom: 20px !important;
-    align-items: flex-start !important; /* Align tops of elements */
+    align-items: center !important; /* Center elements vertically */
 }
 
 .filter-form .form-group {
-    margin: 0 !important; /* Remove default margins */
+    margin: 0 !important;
+}
+
+.filter-form .form-group label {
+    margin-bottom: 5px !important; /* Space below labels */
 }
 
 .filter-form input,
-.filter-form select,
-.filter-form button {
+.filter-form select {
     box-sizing: border-box !important;
     height: 36px !important; /* Consistent height */
     padding: 8px 12px !important; /* Consistent padding */
@@ -206,9 +209,16 @@
 }
 
 .filter-form button {
+    box-sizing: border-box !important;
+    height: 36px !important; /* Consistent height */
+    padding: 8px 12px !important; /* Consistent padding */
+    margin-top: 24px !important; /* Lower button to align with input/dropdown boxes */
+    border: none !important;
+    border-radius: 4px !important;
+    font-size: 0.9rem !important;
+    line-height: 1 !important;
     background-color: #003366 !important;
     color: white !important;
-    border: none !important;
     cursor: pointer !important;
     transition: background-color 0.3s ease !important;
 }
@@ -297,10 +307,16 @@
     }
 
     .filter-form input,
-    .filter-form select,
-    .filter-form button {
+    .filter-form select {
         height: 40px !important; /* Slightly taller for desktop */
         padding: 10px 14px !important;
         font-size: 1rem !important;
+    }
+
+    .filter-form button {
+        height: 40px !important;
+        padding: 10px 14px !important;
+        font-size: 1rem !important;
+        margin-top: 24px !important; /* Consistent offset on desktop */
     }
 }
