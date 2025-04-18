@@ -608,7 +608,8 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                                 echo htmlspecialchars($initials);
                                 ?>
                             </div>
-                            <h1><?php echo htmlspecialchars("$greeting, {$user['first_name'] ?? 'User'}!"); ?></h1>
+                            <?php $user_first_name = $user['first_name'] ?? 'User'; ?>
+                            <h1><?php echo htmlspecialchars("$greeting, $user_first_name!"); ?></h1>
                             <p>Your Library at a Glance<?php echo $due_soon_count ? " - <strong>$due_soon_count book(s) due soon</strong>" : ''; ?></p>
                             <div class="quick-actions">
                                 <a href="borrowed_books.php" class="action-btn"><i class="fas fa-book-reader"></i> My Books (<?php echo $borrowed_count; ?>)</a>
