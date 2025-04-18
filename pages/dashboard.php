@@ -379,9 +379,15 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                             ?></p>
                         </div>
                     </section>
-                    <section class="chart">
-                        <h2>Monthly Transactions</h2>
-                        <canvas id="transactionsChart" style="max-height: 300px;"></canvas>
+                    <section class="charts">
+                        <div class="chart-container">
+                            <h2>Borrowed Books</h2>
+                            <canvas id="borrowedBooksChart" style="max-height: 300px;"></canvas>
+                        </div>
+                        <div class="chart-container">
+                            <h2>Returned Books</h2>
+                            <canvas id="returnedBooksChart" style="max-height: 300px;"></canvas>
+                        </div>
                     </section>
                 <?php endif; ?>
             <?php endif; ?>
@@ -759,19 +765,26 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
     </div>
 
     <script>
-        // Chart.js for Monthly Transactions (Admin Dashboard)
-        const ctx = document.getElementById('transactionsChart');
-        if (ctx) {
-            fetch('../fetch_transactions.php')
+        // Borrowed and Returned Books Charts (Admin Dashboard)
+        const borrowedChartCanvas = document.getElementById('borrowedBooksChart');
+        const returnedChartCanvas = document.getElementById('returnedBooksChart');
+        if (borrowedChartCanvas && returnedChartCanvas) {
+            fetch('../fetch_book_transactions.php')
                 .then(response => response.json())
                 .then(data => {
-                    new Chart(ctx, {
+                    if (data.error) {
+                        console.error('Error fetching chart data:', data.error);
+                        return;
+                    }
+
+                    // Borrowed Books Chart
+                    new Chart(borrowedChartCanvas, {
                         type: 'line',
                         data: {
-                            labels: data.labels,
+                            labels: data.borrow_labels,
                             datasets: [{
-                                label: 'Transactions',
-                                data: data.values,
+                                label: 'Borrowed Books',
+                                data: data.borrow_values,
                                 borderColor: '#003366',
                                 backgroundColor: 'rgba(0, 51, 102, 0.2)',
                                 fill: true
@@ -782,7 +795,34 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                             scales: {
                                 y: {
                                     beginAtZero: true,
-                                    title: { display: true, text: 'Number of Transactions' }
+                                    title: { display: true, text: 'Number of Books Borrowed' }
+                                },
+                                x: {
+                                    title: { display: true, text: 'Month' }
+                                }
+                            }
+                        }
+                    });
+
+                    // Returned Books Chart
+                    new Chart(returnedChartCanvas, {
+                        type: 'line',
+                        data: {
+                            labels: data.return_labels,
+                            datasets: [{
+                                label: 'Returned Books',
+                                data: data.return_values,
+                                borderColor: '#006699',
+                                backgroundColor: 'rgba(0, 102, 153, 0.2)',
+                                fill: true
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    title: { display: true, text: 'Number of Books Returned' }
                                 },
                                 x: {
                                     title: { display: true, text: 'Month' }
