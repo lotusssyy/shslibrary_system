@@ -392,20 +392,25 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
         }
         .stat-card {
             text-align: center;
+            padding: 10px;
         }
         .stat-card i {
             font-size: 1.5rem;
             color: #003366;
             margin-bottom: 10px;
+            display: block;
         }
         .stat-card h3 {
-            font-size: 1.2rem;
-            margin: 0;
+            font-size: 1.1rem;
+            margin: 0 0 5px;
+            color: #333;
+            font-weight: 500;
         }
         .stat-card p {
-            font-size: 1.5rem;
+            font-size: 1.4rem;
             color: #003366;
-            margin: 5px 0 0;
+            margin: 0;
+            font-weight: bold;
         }
         /* Admin Dashboard Cards */
         .dashboard-cards {
@@ -629,7 +634,7 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                             <p><?php echo $books_borrowed_month; ?></p>
                         </div>
                         <div class="stat-card">
-                            <i class="fas fa-books"></i>
+                            <i class="fas fa-book"></i>
                             <h3>Books Available</h3>
                             <p><?php echo $total_books_available; ?></p>
                         </div>
@@ -906,7 +911,7 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                                     <a href="?tab=transactions&page=<?= $page - 1 ?>">Previous</a>
                                 <?php endif; ?>
                                 <?php for ($i = 1; $i <= $total_pages; $i++): ?>
-                                    <a href="?tab=transactions&page=<?= $i ?>" class="<?= $i === $page ? 'active' : '' ?>"><?= $i ?></a>
+                                    <a href="?tab=transactions&page=<?= $i ?>" class="<?= $i === 'page' ? 'active' : '' ?>"><?= $i ?></a>
                                 <?php endfor; ?>
                                 <?php if ($page < $total_pages): ?>
                                     <a href="?tab=transactions&page=<?= $page + 1 ?>">Next</a>
@@ -1051,7 +1056,7 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                                     <a href="?tab=inventory&page=<?= $page - 1 ?>&search=<?= urlencode($search) ?>&genre_filter=<?= urlencode($genre_filter) ?>">Previous</a>
                                 <?php endif; ?>
                                 <?php for ($i = 1; $i <= $total_pages; $i++): ?>
-                                    <a href="?tab=inventory&page=<?= $i ?>&search=<?= urlencode($search) ?>&genre_filter=<?= urlencode($genre_filter) ?>" class="<?= $i === $page ? 'active' : '' ?>"><?= $i ?></a>
+                                    <a href="?tab=inventory&page=<?= $i ?>&search=<?= urlencode($search) ?>&genre_filter=<?= urlencode($genre_filter) ?>" class="<?= $i === 'page' ? 'active' : '' ?>"><?= $i ?></a>
                                 <?php endfor; ?>
                                 <?php if ($page < $total_pages): ?>
                                     <a href="?tab=inventory&page=<?= $page + 1 ?>&search=<?= urlencode($search) ?>&genre_filter=<?= urlencode($genre_filter) ?>">Next</a>
