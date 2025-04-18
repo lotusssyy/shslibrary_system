@@ -118,12 +118,20 @@
     background-size: 20px;
 }
 
+/* Action Form Styling */
+.inventory-table .action-form {
+    display: inline-block !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
 /* Button Styling for Edit and Remove */
-.inventory-table .edit-btn, .inventory-table .remove-btn {
-    box-sizing: border-box;
-    width: 85px !important; /* Fixed width for consistency */
-    height: 34px !important; /* Fixed height for consistency */
-    padding: 7px 10px !important; /* Adjusted padding for tighter look */
+.inventory-table .action-buttons .edit-btn,
+.inventory-table .action-buttons .remove-btn {
+    box-sizing: border-box !important;
+    width: 90px !important; /* Fixed width for consistency */
+    height: 36px !important; /* Fixed height for consistency */
+    padding: 7px 10px !important; /* Consistent padding */
     border: none !important;
     border-radius: 4px !important;
     cursor: pointer !important;
@@ -134,30 +142,23 @@
     font-size: 0.9rem !important;
     line-height: 1 !important;
     text-align: center !important;
+    background-color: #003366 !important; /* Match screenshot color */
+    color: white !important;
     transition: background-color 0.3s ease !important;
-    margin: 0 !important; /* Remove any default margins */
+    margin: 0 !important;
 }
 
-.inventory-table .edit-btn {
-    background-color: #28a745 !important; /* Green for Edit */
-    color: white !important;
+.inventory-table .action-buttons .edit-btn:hover {
+    background-color: #002244 !important; /* Darker blue for Edit hover */
 }
 
-.inventory-table .remove-btn {
-    background-color: #003366 !important; /* Blue for Remove */
-    color: white !important;
-}
-
-.inventory-table .edit-btn:hover {
-    background-color: #218838 !important; /* Darker green on hover */
-}
-
-.inventory-table .remove-btn:hover {
-    background-color: #ffd700 !important; /* Yellow on hover */
+.inventory-table .action-buttons .remove-btn:hover {
+    background-color: #ffd700 !important; /* Yellow for Remove hover */
     color: #003366 !important;
 }
 
-.inventory-table .edit-btn i, .inventory-table .remove-btn i {
+.inventory-table .action-buttons .edit-btn i,
+.inventory-table .action-buttons .remove-btn i {
     font-size: 0.9rem !important;
     margin-right: 4px !important;
 }
@@ -167,9 +168,10 @@
     display: flex !important;
     justify-content: center !important;
     align-items: center !important;
-    gap: 12px !important; /* Increased space between buttons */
+    gap: 12px !important; /* Space between buttons */
     flex-wrap: nowrap !important;
     padding: 0 !important;
+    margin: 0 !important;
 }
 
 /* Ensure Action column is centered */
@@ -278,9 +280,10 @@
         padding: 10px 20px;
     }
 
-    .inventory-table .edit-btn, .inventory-table .remove-btn {
-        width: 95px !important;
-        height: 38px !important;
+    .inventory-table .action-buttons .edit-btn,
+    .inventory-table .action-buttons .remove-btn {
+        width: 100px !important;
+        height: 40px !important;
         font-size: 1rem !important;
         padding: 8px 12px !important; /* Slightly larger padding for desktop */
     }

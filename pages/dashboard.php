@@ -47,7 +47,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_student']) && $us
         } else {
             try {
                 $query = $pdo->prepare("INSERT INTO users (first_name, last_name, email, password, rfid_number, student_id, course, year_level, role) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'student')");
-                $query->execute([$first_name, $last_name, $email, $password, $rfid_number, $studentdiocese_id, $course, $year_level]);
+                $query->execute([$first_name, $last_name, $email, $password, $rfid_number, $student_id, $course, $year_level]);
                 $success_message = "Student added successfully.";
             } catch (PDOException $e) {
                 $error_message = "Error adding student: " . $e->getMessage();
@@ -697,11 +697,11 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                                             <td><?php echo htmlspecialchars(date('Y-m-d H:i:s', strtotime($book['added_at']))); ?></td>
                                             <td>
                                                 <div class="action-buttons">
-                                                    <form method="GET" action="edit_book.php" style="display:inline;">
+                                                    <form method="GET" action="edit_book.php" class="action-form">
                                                         <input type="hidden" name="book_id" value="<?php echo $book['id']; ?>">
                                                         <button type="submit" class="edit-btn"><i class="fas fa-edit"></i> Edit</button>
                                                     </form>
-                                                    <form method="POST" style="display:inline;">
+                                                    <form method="POST" class="action-form">
                                                         <input type="hidden" name="book_id" value="<?php echo $book['id']; ?>">
                                                         <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
                                                         <button type="submit" name="remove_book" class="remove-btn" onclick="return confirm('Are you sure you want to remove this book?');">
