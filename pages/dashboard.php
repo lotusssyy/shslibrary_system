@@ -1,6 +1,7 @@
 <?php
 include '../includes/db.php';
 session_start();
+date_default_timezone_set('Asia/Manila');
 if (!isset($_SESSION['user_id'])) {
     header('Location: ../index.php');
     exit;
@@ -19,27 +20,38 @@ $success_message = '';
 $error_message = '';
 
 // Fetch user details
-$stmt = $pdo->prepare("SELECT first_name, last_name FROM users WHERE id = :id");
-$stmt->bindParam(':id', $user_id, PDO::PARAM_INT);
-$stmt->execute();
-$user = $stmt->fetch();
+try {
+    $stmt = $pdo->prepare("SELECT first_name, last_name FROM users WHERE id = :id");
+    $stmt->bindParam(':id', $user_id, PDO::PARAM_INT);
+    $stmt->execute();
+    $user = $stmt->fetch();
+    if (!$user) {
+        $error_message = "User not found.";
+        error_log("User ID $user_id not found in users table.");
+    }
+} catch (PDOException $e) {
+    $error_message = "Database error: Unable to fetch user details.";
+    error_log("User fetch error: " . $e->getMessage());
+}
 
 // Fetch data for student dashboard
+$borrowed_count = 0;
+$recent_books = [];
 if ($user_role === 'student') {
-    // Count borrowed books
-    $stmt = $pdo->prepare("SELECT COUNT(*) FROM transactions WHERE user_id = ? AND action = 'BORROW' AND returned_date IS NULL");
-    $stmt->execute([$user_id]);
-    $borrowed_count = $stmt->fetchColumn();
+    try {
+        // Count borrowed books
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM transactions WHERE user_id = ? AND action = 'BORROW' AND returned_date IS NULL");
+        $stmt->execute([$user_id]);
+        $borrowed_count = $stmt->fetchColumn();
 
-    // Count unread notices
-    $stmt = $pdo->prepare("SELECT COUNT(*) FROM notices WHERE user_id = ? AND read_status = 0");
-    $stmt->execute([$user_id]);
-    $unread_notices = $stmt->fetchColumn();
-
-    // Fetch recent books
-    $stmt = $pdo->prepare("SELECT id, title, author FROM books ORDER BY added_at DESC LIMIT 6");
-    $stmt->execute();
-    $recent_books = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        // Fetch recent books
+        $stmt = $pdo->prepare("SELECT id, title, author FROM books ORDER BY id DESC LIMIT 6");
+        $stmt->execute();
+        $recent_books = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        $error_message = "Database error: Unable to fetch student data.";
+        error_log("Student data fetch error: " . $e->getMessage());
+    }
 }
 
 // Handle adding a student (admin only)
@@ -53,25 +65,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_student']) && $us
     $course = trim($_POST['course']);
     $year_level = isset($_POST['year_level']) ? (int) trim($_POST['year_level']) : 0;
 
-    $check_stmt = $pdo->prepare("SELECT COUNT(*) FROM users WHERE student_id = ?");
-    $check_stmt->execute([$student_id]);
-    if ($check_stmt->fetchColumn() > 0) {
-        $error_message = "Student ID '$student_id' already exists. Please use a unique ID.";
-    } else {
-        $valid_year_levels = [11, 12];
-        if ($year_level === 0 || !in_array($year_level, $valid_year_levels)) {
-            $error_message = "Invalid year level selected. Please choose Grade 11 or Grade 12.";
-            error_log("Validation failed: Invalid year_level: '$year_level'");
+    try {
+        $check_stmt = $pdo->prepare("SELECT COUNT(*) FROM users WHERE student_id = ?");
+        $check_stmt->execute([$student_id]);
+        if ($check_stmt->fetchColumn() > 0) {
+            $error_message = "Student ID '$student_id' already exists. Please use a unique ID.";
         } else {
-            try {
+            $valid_year_levels = [11, 12];
+            if ($year_level === 0 || !in_array($year_level, $valid_year_levels)) {
+                $error_message = "Invalid year level selected. Please choose Grade 11 or Grade 12.";
+                error_log("Validation failed: Invalid year_level: '$year_level'");
+            } else {
                 $query = $pdo->prepare("INSERT INTO users (first_name, last_name, email, password, rfid_number, student_id, course, year_level, role) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'student')");
                 $query->execute([$first_name, $last_name, $email, $password, $rfid_number, $student_id, $course, $year_level]);
                 $success_message = "Student added successfully.";
-            } catch (PDOException $e) {
-                $error_message = "Error adding student: " . $e->getMessage();
-                error_log($error_message);
             }
         }
+    } catch (PDOException $e) {
+        $error_message = "Error adding student: " . $e->getMessage();
+        error_log($error_message);
     }
 }
 
@@ -111,7 +123,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_book']) && $user_
     $book_number = trim($_POST['book_number']);
 
     try {
-        $query = $pdo->prepare("INSERT INTO books (title, author, genre, barcode, book_number, available, total_quantity, added_at) VALUES (?, ?, ?, ?, ?, 1, 1, NOW())");
+        $query = $pdo->prepare("INSERT INTO books (title, author, genre, barcode, book_number, available, total_quantity) VALUES (?, ?, ?, ?, ?, 1, 1)");
         $query->execute([$title, $author, $genre, $barcode, $book_number]);
         $success_message = "Book added successfully.";
     } catch (PDOException $e) {
@@ -339,13 +351,6 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
             border-radius: 4px;
             cursor: pointer;
         }
-        .badge {
-            background: #dc3545;
-            color: white;
-            padding: 2px 6px;
-            border-radius: 10px;
-            font-size: 0.8rem;
-        }
         /* Recent Books Carousel */
         .recent-books {
             margin: 20px 0;
@@ -473,11 +478,10 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                     <header>
                         <div class="welcome-widget">
                             <img src="../images/default-avatar.png" alt="Profile" class="avatar">
-                            <h1>Hello, <?php echo htmlspecialchars($user['first_name']); ?>!</h1>
+                            <h1>Hello, <?php echo htmlspecialchars($user['first_name'] ?? 'User'); ?>!</h1>
                             <p>Your Library at a Glance</p>
                             <div class="quick-actions">
                                 <a href="borrowed_books.php" class="action-btn">My Books (<?php echo $borrowed_count; ?>)</a>
-                                <a href="notices.php" class="action-btn">Notices <?php echo $unread_notices ? "<span class='badge'>$unread_notices</span>" : ''; ?></a>
                                 <form action="available_books.php" method="GET" class="mini-search">
                                     <input type="text" name="search" placeholder="Find a book..." required>
                                     <button type="submit"><i class="fas fa-search"></i></button>
@@ -509,28 +513,43 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                 <?php else: ?>
                     <header>
                         <h1>Dashboard</h1>
-                        <p>Welcome back, <?php echo htmlspecialchars($user['first_name'] . ' ' . $user['last_name']); ?>!</p>
+                        <p>Welcome back, <?php echo htmlspecialchars($user['first_name'] . ' ' . $user['last_name'] ?? 'Admin'); ?>!</p>
                     </header>
                     <section class="dashboard-cards">
                         <div class="card">
                             <h3>Total Students</h3>
                             <p><?php
-                                $query = $pdo->query("SELECT COUNT(*) FROM users WHERE role = 'student'");
-                                echo $query->fetchColumn();
+                                try {
+                                    $query = $pdo->query("SELECT COUNT(*) FROM users WHERE role = 'student'");
+                                    echo $query->fetchColumn();
+                                } catch (PDOException $e) {
+                                    echo "N/A";
+                                    error_log("Total students query error: " . $e->getMessage());
+                                }
                             ?></p>
                         </div>
                         <div class="card">
                             <h3>Total Books</h3>
                             <p><?php
-                                $query = $pdo->query("SELECT COUNT(*) FROM books");
-                                echo $query->fetchColumn();
+                                try {
+                                    $query = $pdo->query("SELECT COUNT(*) FROM books");
+                                    echo $query->fetchColumn();
+                                } catch (PDOException $e) {
+                                    echo "N/A";
+                                    error_log("Total books query error: " . $e->getMessage());
+                                }
                             ?></p>
                         </div>
                         <div class="card">
                             <h3>Total Transactions</h3>
                             <p><?php
-                                $query = $pdo->query("SELECT COUNT(*) FROM transactions");
-                                echo $query->fetchColumn();
+                                try {
+                                    $query = $pdo->query("SELECT COUNT(*) FROM transactions");
+                                    echo $query->fetchColumn();
+                                } catch (PDOException $e) {
+                                    echo "N/A";
+                                    error_log("Total transactions query error: " . $e->getMessage());
+                                }
                             ?></p>
                         </div>
                     </section>
@@ -612,14 +631,20 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                     <section class="admin-section">
                         <h2>Registered Students</h2>
                         <?php
-                        $query = $pdo->query("SELECT id, first_name, last_name, email, student_id, course, year_level FROM users WHERE role = 'student' ORDER BY last_name, first_name");
-                        $students = $query->fetchAll(PDO::FETCH_ASSOC);
+                        try {
+                            $query = $pdo->query("SELECT id, first_name, last_name, email, student_id, course, year_level FROM users WHERE role = 'student' ORDER BY last_name, first_name");
+                            $students = $query->fetchAll(PDO::FETCH_ASSOC);
+                        } catch (PDOException $e) {
+                            $students = [];
+                            $error_message = "Error loading students: " . $e->getMessage();
+                            error_log($error_message);
+                        }
                         if (empty($students)) {
                             echo "<p>No students registered in the database.</p>";
                         } else {
                         ?>
                         <table class="student-table" id="student-table">
-                            |<thead>
+                            <thead>
                                 <tr>
                                     <th>Name</th>
                                     <th>Email</th>
@@ -762,7 +787,7 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                                         <a href="?tab=transactions&page=<?= $page - 1 ?>">Previous</a>
                                     <?php endif; ?>
                                     <?php for ($i = 1; $i <= $total_pages; $i++): ?>
-                                        <a href="?tab=transactions&page=<?= $i ?>" class="<?= $i === 'page' ? 'active' : '' ?>"><?= $i ?></a>
+                                        <a href="?tab=transactions&page=<?= $i ?>" class="<?= $i === $page ? 'active' : '' ?>"><?= $i ?></a>
                                     <?php endfor; ?>
                                     <?php if ($page < $total_pages): ?>
                                         <a href="?tab=transactions&page=<?= $page + 1 ?>">Next</a>
@@ -796,8 +821,13 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                                 <select name="genre_filter">
                                     <option value="">All Genres</option>
                                     <?php
-                                    $genre_query = $pdo->query("SELECT DISTINCT genre FROM books ORDER BY genre");
-                                    $genres = $genre_query->fetchAll(PDO::FETCH_COLUMN);
+                                    try {
+                                        $genre_query = $pdo->query("SELECT DISTINCT genre FROM books ORDER BY genre");
+                                        $genres = $genre_query->fetchAll(PDO::FETCH_COLUMN);
+                                    } catch (PDOException $e) {
+                                        $genres = [];
+                                        error_log("Genre query error: " . $e->getMessage());
+                                    }
                                     foreach ($genres as $genre):
                                     ?>
                                         <option value="<?= htmlspecialchars($genre) ?>" <?= ($_GET['genre_filter'] ?? '') === $genre ? 'selected' : '' ?>><?= htmlspecialchars($genre) ?></option>
@@ -832,7 +862,7 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                             $total_pages = ceil($total_books / $per_page);
 
                             $query = $pdo->prepare("
-                                SELECT id, title, author, genre, barcode, book_number, available, total_quantity, added_at
+                                SELECT id, title, author, genre, barcode, book_number, available, total_quantity
                                 FROM books
                                 $where_sql
                                 ORDER BY title
@@ -874,7 +904,6 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                                         <th>Book Number</th>
                                         <th>Availability</th>
                                         <th>Total Quantity</th>
-                                        <th>Added At</th>
                                         <th>Action</th>
                                     </tr>
                                 </thead>
@@ -888,7 +917,6 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                                             <td><?php echo htmlspecialchars($book['book_number']); ?></td>
                                             <td><?php echo $book['available'] > 0 ? 'Available' : 'Borrowed'; ?></td>
                                             <td><?php echo htmlspecialchars($book['total_quantity']); ?></td>
-                                            <td><?php echo htmlspecialchars(date('m/d/Y h:i:s A', strtotime($book['added_at']))); ?></td>
                                             <td>
                                                 <div class="action-buttons">
                                                     <form method="GET" action="edit_book.php" class="action-form">
