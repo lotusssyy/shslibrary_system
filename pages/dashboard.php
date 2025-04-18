@@ -47,7 +47,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_student']) && $us
         } else {
             try {
                 $query = $pdo->prepare("INSERT INTO users (first_name, last_name, email, password, rfid_number, student_id, course, year_level, role) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'student')");
-                $query->execute([$first_name, $last_name, $email, $password, $rfid_number, $student_id, $course, $year_level]);
+                $query->execute([$first_name, $last_name, $email, $password, $rfid_number, $studentdiocese_id, $course, $year_level]);
                 $success_message = "Student added successfully.";
             } catch (PDOException $e) {
                 $error_message = "Error adding student: " . $e->getMessage();
@@ -206,7 +206,7 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
             display: block;
             margin-top: 10px;
         }
-        .remove-btn, .reset-btn {
+        .reset-btn {
             background-color: #003366;
             color: white;
             border: none;
@@ -220,14 +220,14 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
             font-size: 0.9rem;
             vertical-align: middle;
         }
-        .remove-btn:hover, .reset-btn:hover {
+        .reset-btn:hover {
             background-color: #ffd700;
         }
-        .remove-btn i, .reset-btn i {
+        .reset-btn i {
             margin-right: 0;
         }
         @media (min-width: 768px) {
-            .remove-btn, .reset-btn {
+            .reset-btn {
                 font-size: 1rem;
             }
         }

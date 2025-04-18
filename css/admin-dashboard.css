@@ -118,48 +118,65 @@
     background-size: 20px;
 }
 
-/* Button Styling */
+/* Button Styling for Edit and Remove */
 .edit-btn, .remove-btn {
-    background-color: #28a745; /* Green for Edit */
-    color: white;
-    border: none;
-    padding: 8px 12px;
-    border-radius: 4px;
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    transition: background-color 0.3s ease;
-    font-size: 0.9rem;
-    line-height: 1;
-    min-width: 80px; /* Ensure consistent width */
-    height: 32px; /* Fixed height for consistency */
+    box-sizing: border-box;
+    width: 85px !important; /* Fixed width for consistency */
+    height: 34px !important; /* Fixed height for consistency */
+    padding: 8px 12px !important; /* Consistent padding */
+    border: none !important;
+    border-radius: 4px !important;
+    cursor: pointer !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 6px !important;
+    font-size: 0.9rem !important;
+    line-height: 1 !important;
+    text-align: center !important;
+    transition: background-color 0.3s ease !important;
+    margin: 0 !important; /* Remove any default margins */
+}
+
+.edit-btn {
+    background-color: #28a745 !important; /* Green for Edit */
+    color: white !important;
 }
 
 .remove-btn {
-    background-color: #003366; /* Blue for Remove */
+    background-color: #003366 !important; /* Blue for Remove */
+    color: white !important;
 }
 
 .edit-btn:hover {
-    background-color: #218838; /* Darker green on hover */
+    background-color: #218838 !important; /* Darker green on hover */
 }
 
 .remove-btn:hover {
-    background-color: #ffd700; /* Yellow on hover */
+    background-color: #ffd700 !important; /* Yellow on hover */
+    color: #003366 !important;
 }
 
 .edit-btn i, .remove-btn i {
-    font-size: 0.9rem;
-    margin-right: 4px;
+    font-size: 0.9rem !important;
+    margin-right: 4px !important;
 }
 
 /* Action Buttons Container */
 .action-buttons {
-    display: flex;
-    justify-content: center;
-    gap: 8px;
-    flex-wrap: nowrap;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    gap: 10px !important; /* Space between buttons */
+    flex-wrap: nowrap !important;
+    padding: 0 !important;
+}
+
+/* Ensure Action column is centered */
+.inventory-table th:nth-child(9),
+.inventory-table td:nth-child(9) {
+    text-align: center !important;
+    vertical-align: middle !important;
 }
 
 /* Filter Form Styling */
@@ -262,8 +279,8 @@
     }
 
     .edit-btn, .remove-btn {
-        font-size: 1rem;
-        min-width: 90px;
-        height: 36px;
+        width: 95px !important;
+        height: 38px !important;
+        font-size: 1rem !important;
     }
 }
