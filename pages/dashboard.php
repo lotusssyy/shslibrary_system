@@ -372,10 +372,47 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                             ?></p>
                         </div>
                     </section>
-                    <section class="chart">
-                        <h2>Monthly Transactions</h2>
-                        <canvas id="transactionsChart" style="max-height: 300px;"></canvas>
-                    </section>
+                    <!-- Chart section in transactions tab -->
+                        <section class="chart">
+                            <h2>Monthly Transactions</h2>
+                            <canvas id="transactionsChart" style="max-height: 300px;"></canvas>
+                        </section>
+                        <script>
+                        const transactionsChart = document.getElementById('transactionsChart');
+                        if (transactionsChart) {
+                            fetch('../api/getMonthlyTransactions.php')
+                                .then(response => response.json())
+                                .then(data => {
+                                    const ctx = transactionsChart.getContext('2d');
+                                    new Chart(ctx, {
+                                        type: 'line',
+                                        data: {
+                                            labels: data.labels || [],
+                                            datasets: [{
+                                                label: 'Borrow Transactions',
+                                                data: data.values || [],
+                                                borderColor: 'rgba(52, 152, 219, 1)',
+                                                backgroundColor: 'rgba(52, 152, 219, 0.2)',
+                                                borderWidth: 2,
+                                                fill: true,
+                                                pointRadius: 5,
+                                                pointBackgroundColor: 'rgba(52, 152, 219, 1)'
+                                            }]
+                                        },
+                                        options: {
+                                            responsive: true,
+                                            maintainAspectRatio: false,
+                                            scales: {
+                                                x: { title: { display: true, text: 'Month' } },
+                                                y: { title: { display: true, text: 'Number of Transactions' }, beginAtZero: true, ticks: { stepSize: 1 } }
+                                            },
+                                            plugins: { legend: { display: true } }
+                                        }
+                                    });
+                                })
+                                .catch(error => console.error('Error loading chart data:', error));
+                        }
+                        </script>
                 <?php endif; ?>
             <?php endif; ?>
 
@@ -798,60 +835,94 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                 .catch(error => console.error('Error loading chart data:', error));
         }
 
-        const scanRfidBtn = document.getElementById('scan-rfid-btn');
-        if (scanRfidBtn) {
-            scanRfidBtn.addEventListener('click', function() {
-                const rfidInput = document.getElementById('rfid_input');
-                rfidInput.value = "Scanning...";
-                let attempts = 0;
-                const maxAttempts = 40;
-                const pollRFID = setInterval(() => {
-                    fetch('../scan.php', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                        body: 'rfid_scan=true'
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.rfid_number) {
-                            rfidInput.value = data.rfid_number;
-                            clearInterval(pollRFID);
-                        }
-                        attempts++;
-                        if (attempts >= maxAttempts) {
-                            rfidInput.value = "";
-                            alert("No RFID detected within 20 seconds.");
-                            clearInterval(pollRFID);
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error scanning RFID:', error);
-                        rfidInput.value = "";
-                        alert("Error scanning RFID.");
-                        clearInterval(pollRFID);
+        
+                <script>
+                const scanRfidBtn = document.getElementById('scan-rfid-btn');
+                if (scanRfidBtn) {
+                    scanRfidBtn.addEventListener('click', function() {
+                        const rfidInput = document.getElementById('rfid_input');
+                        rfidInput.value = "Scanning...";
+                        let attempts = 0;
+                        const maxAttempts = 40;
+                        const pollRFID = setInterval(() => {
+                            fetch('../scan.php', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                                body: 'rfid_scan=true'
+                            })
+                            .then(response => {
+                                if (!response.ok) throw new Error('Network response was not ok');
+                                return response.json();
+                            })
+                            .then(data => {
+                                if (data.rfid_number) {
+                                    rfidInput.value = data.rfid_number;
+                                    clearInterval(pollRFID);
+                                } else if (data.error) {
+                                    rfidInput.value = "";
+                                    alert("Error: " + data.error);
+                                    clearInterval(pollRFID);
+                                }
+                                attempts++;
+                                if (attempts >= maxAttempts) {
+                                    rfidInput.value = "";
+                                    alert("No RFID detected within 20 seconds.");
+                                    clearInterval(pollRFID);
+                                }
+                            })
+                            .catch(error => {
+                                console.error('Error scanning RFID:', error);
+                                rfidInput.value = "";
+                                alert("Error scanning RFID: " + error.message);
+                                clearInterval(pollRFID);
+                            });
+                        }, 500);
                     });
-                }, 500);
-            });
-        }
+                }
+                </script>
 
-        const scanBarcodeBtn = document.getElementById('scan-barcode-btn');
-        if (scanBarcodeBtn) {
-            scanBarcodeBtn.addEventListener('click', function() {
-                const barcodeInput = document.getElementById('barcode_input');
-                barcodeInput.value = "Scanning...";
-                let attempts = 0;
-                const maxAttempts = 40;
-                const pollBarcode = setInterval(() => {
-                    fetch('../scan.php', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                        body: 'barcode_scan=true'
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.barcode) {
-                            barcodeInput.value = data.barcode;
-                            clearInterval(pollBarcode);
-                        }
-                        attempts++;
-                        if (
+            <script>
+                        // ... (other scripts remain unchanged)
+                const scanBarcodeBtn = document.getElementById('scan-barcode-btn');
+                if (scanBarcodeBtn) {
+                    scanBarcodeBtn.addEventListener('click', function() {
+                        const barcodeInput = document.getElementById('barcode_input');
+                        barcodeInput.value = "Scanning...";
+                        let attempts = 0;
+                        const maxAttempts = 40;
+                        const pollBarcode = setInterval(() => {
+                            fetch('../scan.php', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                                body: 'barcode_scan=true'
+                            })
+                            .then(response => {
+                                if (!response.ok) throw new Error('Network response was not ok');
+                                return response.json();
+                            })
+                            .then(data => {
+                                if (data.barcode) {
+                                    barcodeInput.value = data.barcode;
+                                    clearInterval(pollBarcode);
+                                } else if (data.error) {
+                                    barcodeInput.value = "";
+                                    alert("Error: " + data.error);
+                                    clearInterval(pollBarcode);
+                                }
+                                attempts++;
+                                if (attempts >= maxAttempts) {
+                                    barcodeInput.value = "";
+                                    alert("No barcode detected within 20 seconds.");
+                                    clearInterval(pollBarcode);
+                                }
+                            })
+                            .catch(error => {
+                                console.error('Error scanning barcode:', error);
+                                barcodeInput.value = "";
+                                alert("Error scanning barcode: " + error.message);
+                                clearInterval(pollBarcode);
+                            });
+                        }, 500);
+                    });
+                }
+                </script>
