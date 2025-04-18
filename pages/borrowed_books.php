@@ -14,53 +14,41 @@ $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
 $per_page = 10;
 $offset = ($page - 1) * $per_page;
 
-// Fetch user details
-$stmt = $pdo->prepare("SELECT first_name, last_name, role FROM users WHERE id = ?");
-$stmt->execute([$user_id]);
-$user = $stmt->fetch();
-$user_role = $user['role'] ?? 'student';
+// Enable error logging for Heroku
+ini_set('display_errors', 0);
+ini_set('log_errors', 1);
+ini_set('error_log', 'php://stderr');
 
-// Fetch borrowed books with pagination
-$count_query = $pdo->prepare("SELECT COUNT(*) FROM transactions t JOIN books b ON t.book_id = b.id WHERE t.user_id = ? AND t.action = 'BORROW' AND t.returned_date IS NULL");
-$count_query->execute([$user_id]);
-$total_books = $count_query->fetchColumn();
-$total_pages = ceil($total_books / $per_page);
-
-$stmt = $pdo->prepare("
-    SELECT b.id, b.title, b.author, b.genre, t.borrowed_date
-    FROM transactions t
-    JOIN books b ON t.book_id = b.id
-    WHERE t.user_id = ? AND t.action = 'BORROW' AND t.returned_date IS NULL
-    ORDER BY t.borrowed_date DESC
-    LIMIT ? OFFSET ?
-");
-$stmt->execute([$user_id, $per_page, $offset]);
-$borrowed_books = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-// Handle return book
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['return_book'])) {
-    $book_id = (int)$_POST['book_id'];
-    try {
-        $pdo->beginTransaction();
-
-        $check_stmt = $pdo->prepare("SELECT id FROM transactions WHERE user_id = ? AND book_id = ? AND action = 'BORROW' AND returned_date IS NULL");
-        $check_stmt->execute([$user_id, $book_id]);
-        if (!$check_stmt->fetch()) {
-            throw new Exception("This book is not borrowed by you.");
-        }
-
-        $stmt = $pdo->prepare("UPDATE transactions SET returned_date = NOW() WHERE user_id = ? AND book_id = ? AND action = 'BORROW' AND returned_date IS NULL");
-        $stmt->execute([$user_id, $book_id]);
-
-        $stmt = $pdo->prepare("UPDATE books SET available = available + 1 WHERE id = ?");
-        $stmt->execute([$book_id]);
-
-        $pdo->commit();
-        $success_message = "Book returned successfully!";
-    } catch (Exception $e) {
-        $pdo->rollBack();
-        $error_message = "Error returning book: " . $e->getMessage();
+try {
+    // Fetch user details
+    $stmt = $pdo->prepare("SELECT first_name, last_name, role FROM users WHERE id = ?");
+    $stmt->execute([$user_id]);
+    $user = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$user) {
+        error_log("User ID $user_id not found in users table.");
+        $error_message = "User not found.";
     }
+    $user_role = $user['role'] ?? 'student';
+
+    // Fetch borrowed books with pagination
+    $count_query = $pdo->prepare("SELECT COUNT(*) FROM transactions t JOIN books b ON t.book_id = b.id WHERE t.user_id = ? AND t.action = 'BORROW' AND t.returned_date IS NULL");
+    $count_query->execute([$user_id]);
+    $total_books = $count_query->fetchColumn();
+    $total_pages = ceil($total_books / $per_page);
+
+    $stmt = $pdo->prepare("
+        SELECT b.id, b.title, b.author, b.genre, t.borrowed_date
+        FROM transactions t
+        JOIN books b ON t.book_id = b.id
+        WHERE t.user_id = ? AND t.action = 'BORROW' AND t.returned_date IS NULL
+        ORDER BY t.borrowed_date DESC
+        LIMIT ? OFFSET ?
+    ");
+    $stmt->execute([$user_id, $per_page, $offset]);
+    $borrowed_books = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    error_log("Database error in borrowed_books.php: " . $e->getMessage());
+    $error_message = "Unable to load borrowed books. Please try again later.";
 }
 ?>
 
@@ -116,7 +104,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['return_book'])) {
                 <div class="alert-error"><?php echo htmlspecialchars($error_message); ?></div>
             <?php endif; ?>
 
-            declared but never used
             <section class="borrowed-books">
                 <?php if (empty($borrowed_books)): ?>
                     <p>You have no borrowed books.</p>
@@ -128,7 +115,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['return_book'])) {
                                 <th>Author</th>
                                 <th>Genre</th>
                                 <th>Borrowed Date</th>
-                                <th>Action</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -138,12 +124,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['return_book'])) {
                                     <td><?php echo htmlspecialchars($book['author']); ?></td>
                                     <td><?php echo htmlspecialchars($book['genre']); ?></td>
                                     <td><?php echo htmlspecialchars(date('Y-m-d H:i:s', strtotime($book['borrowed_date']))); ?></td>
-                                    <td>
-                                        <form method="POST">
-                                            <input type="hidden" name="book_id" value="<?php echo $book['id']; ?>">
-                                            <button type="submit" name="return_book" class="action-btn">Return</button>
-                                        </form>
-                                    </td>
                                 </tr>
                             <?php endforeach; ?>
                         </tbody>
