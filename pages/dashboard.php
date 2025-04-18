@@ -267,6 +267,57 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
             color: #dc3545;
             font-size: 0.9rem;
         }
+        /* Sidebar Styles */
+        .sidebar {
+            background: #003366;
+            color: white;
+            width: 250px;
+            height: 100vh;
+            position: fixed;
+            top: 0;
+            left: 0;
+            overflow-y: auto;
+        }
+        .sidebar-header {
+            padding: 20px;
+            text-align: center;
+        }
+        .sidebar-header h2 {
+            margin: 0;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        .school-logo {
+            width: 40px;
+            height: 40px;
+        }
+        .sidebar nav {
+            padding: 20px 0;
+        }
+        .sidebar nav a {
+            display: flex;
+            align-items: center;
+            padding: 12px 20px;
+            color: white;
+            text-decoration: none;
+            font-size: 1rem;
+            transition: background 0.2s;
+        }
+        .sidebar nav a i {
+            margin-right: 10px;
+            font-size: 1.2rem;
+        }
+        .sidebar nav a:hover {
+            background: #ffd700;
+            color: #003366;
+        }
+        .sidebar nav a.active {
+            background: #005588;
+            color: white;
+        }
         /* Welcome Widget */
         .welcome-widget {
             background: linear-gradient(135deg, #003366 0%, #005588 100%);
@@ -616,7 +667,8 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                                 echo htmlspecialchars($initials);
                                 ?>
                             </div>
-                            <h1><?php echo htmlspecialchars($greeting . ', ' . ($user['first_name'] ?? 'User') . '!'); ?></h1>
+                            <?php $first_name = $user['first_name'] ?? 'User'; ?>
+                            <h1><?php echo htmlspecialchars("$greeting, $first_name!"); ?></h1>
                             <p>Your Library at a Glance<?php echo $due_soon_count ? " - <strong>$due_soon_count book(s) due soon</strong>" : ''; ?></p>
                             <div class="quick-actions">
                                 <a href="borrowed_books.php" class="action-btn"><i class="fas fa-book-reader"></i> My Books (<?php echo $borrowed_count; ?>)</a>
@@ -911,7 +963,7 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                                     <a href="?tab=transactions&page=<?= $page - 1 ?>">Previous</a>
                                 <?php endif; ?>
                                 <?php for ($i = 1; $i <= $total_pages; $i++): ?>
-                                    <a href="?tab=transactions&page=<?= $i ?>" class="<?= $i === 'page' ? 'active' : '' ?>"><?= $i ?></a>
+                                    <a href="?tab=transactions&page=<?= $i ?>" class="<?= $i === $page ? 'active' : '' ?>"><?= $i ?></a>
                                 <?php endfor; ?>
                                 <?php if ($page < $total_pages): ?>
                                     <a href="?tab=transactions&page=<?= $page + 1 ?>">Next</a>
@@ -1056,7 +1108,7 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                                     <a href="?tab=inventory&page=<?= $page - 1 ?>&search=<?= urlencode($search) ?>&genre_filter=<?= urlencode($genre_filter) ?>">Previous</a>
                                 <?php endif; ?>
                                 <?php for ($i = 1; $i <= $total_pages; $i++): ?>
-                                    <a href="?tab=inventory&page=<?= $i ?>&search=<?= urlencode($search) ?>&genre_filter=<?= urlencode($genre_filter) ?>" class="<?= $i === 'page' ? 'active' : '' ?>"><?= $i ?></a>
+                                    <a href="?tab=inventory&page=<?= $i ?>&search=<?= urlencode($search) ?>&genre_filter=<?= urlencode($genre_filter) ?>" class="<?= $i === $page ? 'active' : '' ?>"><?= $i ?></a>
                                 <?php endfor; ?>
                                 <?php if ($page < $total_pages): ?>
                                     <a href="?tab=inventory&page=<?= $page + 1 ?>&search=<?= urlencode($search) ?>&genre_filter=<?= urlencode($genre_filter) ?>">Next</a>
