@@ -183,35 +183,39 @@
 
 /* Filter Form Styling */
 .filter-form {
-    display: flex;
-    gap: 15px;
-    margin-bottom: 20px;
-    align-items: flex-end;
+    display: flex !important;
+    gap: 15px !important;
+    margin-bottom: 20px !important;
+    align-items: flex-start !important; /* Align tops of elements */
 }
 
 .filter-form .form-group {
-    display: flex;
-    flex-direction: column;
+    margin: 0 !important; /* Remove default margins */
 }
 
-.filter-form input, .filter-form select {
-    padding: 5px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
+.filter-form input,
+.filter-form select,
+.filter-form button {
+    box-sizing: border-box !important;
+    height: 36px !important; /* Consistent height */
+    padding: 8px 12px !important; /* Consistent padding */
+    border: 1px solid #ddd !important;
+    border-radius: 4px !important;
+    font-size: 0.9rem !important;
+    line-height: 1 !important;
 }
 
 .filter-form button {
-    padding: 8px 16px;
-    background-color: #003366;
-    color: white;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
+    background-color: #003366 !important;
+    color: white !important;
+    border: none !important;
+    cursor: pointer !important;
+    transition: background-color 0.3s ease !important;
 }
 
 .filter-form button:hover {
-    background-color: #ffd700;
-    color: #003366;
+    background-color: #ffd700 !important;
+    color: #003366 !important;
 }
 
 /* Pagination Styling */
@@ -290,5 +294,13 @@
 
     .inventory-table .action-buttons {
         gap: 14px !important; /* Slightly larger gap for desktop */
+    }
+
+    .filter-form input,
+    .filter-form select,
+    .filter-form button {
+        height: 40px !important; /* Slightly taller for desktop */
+        padding: 10px 14px !important;
+        font-size: 1rem !important;
     }
 }
