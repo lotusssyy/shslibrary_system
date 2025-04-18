@@ -1,4 +1,3 @@
-
 <?php
 include '../includes/db.php';
 session_start();
@@ -112,7 +111,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['remove_book']) && $us
         $book_id = trim($_POST['book_id']);
         try {
             $pdo->beginTransaction();
-            // Check if the book is currently borrowed
             $query = $pdo->prepare("SELECT available FROM books WHERE id = ?");
             $query->execute([$book_id]);
             $book = $query->fetch();
@@ -122,15 +120,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['remove_book']) && $us
             if ($book['available'] == 0) {
                 throw new Exception("Cannot remove book: It is currently borrowed.");
             }
-            // Delete related transactions
             $query = $pdo->prepare("DELETE FROM transactions WHERE book_id = ?");
             $query->execute([$book_id]);
-            // Delete the book
             $query = $pdo->prepare("DELETE FROM books WHERE id = ?");
             $query->execute([$book_id]);
             $pdo->commit();
             $success_message = "Book removed successfully.";
-            $_SESSION['csrf_token'] = bin2hex(random_bytes(32)); // Regenerate CSRF token
+            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
             error_log("Admin removed book ID $book_id on " . date('Y-m-d H:i:s'));
         } catch (Exception $e) {
             if ($pdo->inTransaction()) {
@@ -154,7 +150,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reset_transactions'])
             $query->execute();
             $pdo->commit();
             $success_message = "All transactions have been reset successfully.";
-            $_SESSION['csrf_token'] = bin2hex(random_bytes(32)); // Regenerate CSRF token
+            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
             error_log("Admin reset all transactions on " . date('Y-m-d H:i:s'));
         } catch (PDOException $e) {
             if ($pdo->inTransaction()) {
@@ -174,15 +170,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reset_books']) && $us
     } else {
         try {
             $pdo->beginTransaction();
-            // Delete all transactions to maintain referential integrity
             $query = $pdo->prepare("DELETE FROM transactions");
             $query->execute();
-            // Delete all books
             $query = $pdo->prepare("DELETE FROM books");
             $query->execute();
             $pdo->commit();
             $success_message = "All books have been removed successfully.";
-            $_SESSION['csrf_token'] = bin2hex(random_bytes(32)); // Regenerate CSRF token
+            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
             error_log("Admin reset all books on " . date('Y-m-d H:i:s'));
         } catch (PDOException $e) {
             if ($pdo->inTransaction()) {
@@ -274,11 +268,8 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
         .inventory-table tr:nth-child(even) {
             background-color: #f2f2f2;
         }
-        .admin-section p.no-records {
-            margin-top: 20px;
-        }
-        .reset-button-container {
-            margin-top: 15px;
+        .inventory-table th:nth-child(9), .inventory-table td:nth-child(9) {
+            text-align: center;
         }
     </style>
 </head>
@@ -510,13 +501,24 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                         <h2>Transactions</h2>
                         <?php
                         try {
+                            $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
+                            $per_page = 20;
+                            $offset = ($page - 1) * $per_page;
+
+                            $count_query = $pdo->query("SELECT COUNT(*) FROM transactions WHERE action IN ('BORROW', 'RETURN')");
+                            $total_transactions = $count_query->fetchColumn();
+                            $total_pages = ceil($total_transactions / $per_page);
+
                             $query = $pdo->prepare("
                                 SELECT t.id, t.action, COALESCE(t.borrowed_date, t.returned_date) AS transaction_date, u.first_name, u.last_name, u.email, u.student_id
                                 FROM transactions t
                                 JOIN users u ON t.user_id = u.id
                                 WHERE t.action IN ('BORROW', 'RETURN')
                                 ORDER BY COALESCE(t.borrowed_date, t.returned_date) DESC
+                                LIMIT :limit OFFSET :offset
                             ");
+                            $query->bindValue(':limit', $per_page, PDO::PARAM_INT);
+                            $query->bindValue(':offset', $offset, PDO::PARAM_INT);
                             $query->execute();
                             $transactions = $query->fetchAll(PDO::FETCH_ASSOC);
                         } catch (PDOException $e) {
@@ -560,6 +562,19 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                                     <?php endforeach; ?>
                                 </tbody>
                             </table>
+                            <?php if ($total_pages > 1): ?>
+                                <div class="pagination">
+                                    <?php if ($page > 1): ?>
+                                        <a href="?tab=transactions&page=<?= $page - 1 ?>">Previous</a>
+                                    <?php endif; ?>
+                                    <?php for ($i = 1; $i <= $total_pages; $i++): ?>
+                                        <a href="?tab=transactions&page=<?= $i ?>" class="<?= $i === $page ? 'active' : '' ?>"><?= $i ?></a>
+                                    <?php endfor; ?>
+                                    <?php if ($page < $total_pages): ?>
+                                        <a href="?tab=transactions&page=<?= $page + 1 ?>">Next</a>
+                                    <?php endif; ?>
+                                </div>
+                            <?php endif; ?>
                         <?php endif; ?>
                         <div class="reset-button-container">
                             <form method="POST" style="display:inline;">
@@ -575,13 +590,65 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                 <?php if ($active_tab === 'inventory'): ?>
                     <section class="admin-section">
                         <h2>Inventory</h2>
+                        <form method="GET" class="filter-form">
+                            <input type="hidden" name="tab" value="inventory">
+                            <input type="hidden" name="page" value="<?= isset($_GET['page']) ? (int)$_GET['page'] : 1 ?>">
+                            <div class="form-group">
+                                <label>Search:</label>
+                                <input type="text" name="search" value="<?= htmlspecialchars($_GET['search'] ?? '') ?>" placeholder="Search by title or author">
+                            </div>
+                            <div class="form-group">
+                                <label>Genre:</label>
+                                <select name="genre_filter">
+                                    <option value="">All Genres</option>
+                                    <?php
+                                    $genre_query = $pdo->query("SELECT DISTINCT genre FROM books ORDER BY genre");
+                                    $genres = $genre_query->fetchAll(PDO::FETCH_COLUMN);
+                                    foreach ($genres as $genre):
+                                    ?>
+                                        <option value="<?= htmlspecialchars($genre) ?>" <?= ($_GET['genre_filter'] ?? '') === $genre ? 'selected' : '' ?>><?= htmlspecialchars($genre) ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <button type="submit">Filter</button>
+                        </form>
                         <?php
                         try {
+                            $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
+                            $per_page = 20;
+                            $offset = ($page - 1) * $per_page;
+
+                            $search = isset($_GET['search']) ? trim($_GET['search']) : '';
+                            $genre_filter = isset($_GET['genre_filter']) ? trim($_GET['genre_filter']) : '';
+                            $where_clause = [];
+                            $params = [];
+                            if ($search) {
+                                $where_clause[] = "(title LIKE :search OR author LIKE :search)";
+                                $params[':search'] = "%$search%";
+                            }
+                            if ($genre_filter) {
+                                $where_clause[] = "genre = :genre";
+                                $params[':genre'] = $genre_filter;
+                            }
+                            $where_sql = $where_clause ? 'WHERE ' . implode(' AND ', $where_clause) : '';
+
+                            $count_query = $pdo->prepare("SELECT COUNT(*) FROM books $where_sql");
+                            $count_query->execute($params);
+                            $total_books = $count_query->fetchColumn();
+                            $total_pages = ceil($total_books / $per_page);
+
                             $query = $pdo->prepare("
                                 SELECT id, title, author, genre, barcode, book_number, available, total_quantity, added_at
                                 FROM books
+                                $where_sql
                                 ORDER BY title
+                                LIMIT :limit OFFSET :offset
                             ");
+                            foreach ($params as $key => $value) {
+                                $query->bindValue($key, $value);
+                            }
+                            $query->bindValue(':limit', $per_page, PDO::PARAM_INT);
+                            $query->bindValue(':offset', $offset, PDO::PARAM_INT);
                             $query->execute();
                             $books = $query->fetchAll(PDO::FETCH_ASSOC);
                         } catch (PDOException $e) {
@@ -629,6 +696,10 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                                             <td><?php echo htmlspecialchars($book['total_quantity']); ?></td>
                                             <td><?php echo htmlspecialchars(date('Y-m-d H:i:s', strtotime($book['added_at']))); ?></td>
                                             <td>
+                                                <form method="GET" action="edit_book.php" style="display:inline;">
+                                                    <input type="hidden" name="book_id" value="<?php echo $book['id']; ?>">
+                                                    <button type="submit" class="edit-btn"><i class="fas fa-edit"></i> Edit</button>
+                                                </form>
                                                 <form method="POST" style="display:inline;">
                                                     <input type="hidden" name="book_id" value="<?php echo $book['id']; ?>">
                                                     <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
@@ -641,6 +712,19 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                                     <?php endforeach; ?>
                                 </tbody>
                             </table>
+                            <?php if ($total_pages > 1): ?>
+                                <div class="pagination">
+                                    <?php if ($page > 1): ?>
+                                        <a href="?tab=inventory&page=<?= $page - 1 ?>&search=<?= urlencode($search) ?>&genre_filter=<?= urlencode($genre_filter) ?>">Previous</a>
+                                    <?php endif; ?>
+                                    <?php for ($i = 1; $i <= $total_pages; $i++): ?>
+                                        <a href="?tab=inventory&page=<?= $i ?>&search=<?= urlencode($search) ?>&genre_filter=<?= urlencode($genre_filter) ?>" class="<?= $i === $page ? 'active' : '' ?>"><?= $i ?></a>
+                                    <?php endfor; ?>
+                                    <?php if ($page < $total_pages): ?>
+                                        <a href="?tab=inventory&page=<?= $page + 1 ?>&search=<?= urlencode($search) ?>&genre_filter=<?= urlencode($genre_filter) ?>">Next</a>
+                                    <?php endif; ?>
+                                </div>
+                            <?php endif; ?>
                         <?php endif; ?>
                         <div class="reset-button-container">
                             <form method="POST" style="display:inline;">
