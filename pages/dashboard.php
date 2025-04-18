@@ -1,6 +1,7 @@
 <?php
 include '../includes/db.php';
 session_start();
+date_default_timezone_set('Asia/Manila'); // Set to Philippine Standard Time
 if (!isset($_SESSION['user_id'])) {
     header('Location: ../index.php');
     exit;
@@ -694,7 +695,7 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                                             <td><?php echo htmlspecialchars($book['book_number']); ?></td>
                                             <td><?php echo $book['available'] > 0 ? 'Available' : 'Borrowed'; ?></td>
                                             <td><?php echo htmlspecialchars($book['total_quantity']); ?></td>
-                                            <td><?php echo htmlspecialchars(date('Y-m-d H:i:s', strtotime($book['added_at']))); ?></td>
+                                            <td><?php echo htmlspecialchars(date('m/d/Y h:i:s A', strtotime($book['added_at']))); ?></td>
                                             <td>
                                                 <div class="action-buttons">
                                                     <form method="GET" action="edit_book.php" class="action-form">
