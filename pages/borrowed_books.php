@@ -15,27 +15,43 @@ $per_page = 10;
 $offset = ($page - 1) * $per_page;
 
 // Fetch user details
-$stmt = $pdo->prepare("SELECT first_name, last_name, role FROM users WHERE id = ?");
-$stmt->execute([$user_id]);
-$user = $stmt->fetch();
-$user_role = $user['role'] ?? 'student';
+try {
+    $stmt = $pdo->prepare("SELECT first_name, last_name, role FROM users WHERE id = ?");
+    $stmt->execute([$user_id]);
+    $user = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$user) {
+        $error_message = "User not found.";
+        error_log("User ID $user_id not found in users table.");
+    }
+    $user_role = $user['role'] ?? 'student';
+} catch (PDOException $e) {
+    $error_message = "Database error: Unable to fetch user details.";
+    error_log("User fetch error: " . $e->getMessage());
+}
 
 // Fetch borrowed books with pagination
-$count_query = $pdo->prepare("SELECT COUNT(*) FROM transactions t JOIN books b ON t.book_id = b.id WHERE t.user_id = ? AND t.action = 'BORROW' AND t.returned_date IS NULL");
-$count_query->execute([$user_id]);
-$total_books = $count_query->fetchColumn();
-$total_pages = ceil($total_books / $per_page);
+try {
+    $count_query = $pdo->prepare("SELECT COUNT(*) FROM transactions t JOIN books b ON t.book_id = b.id WHERE t.user_id = ? AND t.action = 'BORROW' AND t.returned_date IS NULL");
+    $count_query->execute([$user_id]);
+    $total_books = $count_query->fetchColumn();
+    $total_pages = ceil($total_books / $per_page);
 
-$stmt = $pdo->prepare("
-    SELECT b.id, b.title, b.author, b.genre, t.borrowed_date
-    FROM transactions t
-    JOIN books b ON t.book_id = b.id
-    WHERE t.user_id = ? AND t.action = 'BORROW' AND t.returned_date IS NULL
-    ORDER BY t.borrowed_date DESC
-    LIMIT ? OFFSET ?
-");
-$stmt->execute([$user_id, $per_page, $offset]);
-$borrowed_books = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $stmt = $pdo->prepare("
+        SELECT b.id, b.title, b.author, b.genre, t.borrowed_date
+        FROM transactions t
+        JOIN books b ON t.book_id = b.id
+        WHERE t.user_id = ? AND t.action = 'BORROW' AND t.returned_date IS NULL
+        ORDER BY t.borrowed_date DESC
+        LIMIT ? OFFSET ?
+    ");
+    $stmt->execute([$user_id, $per_page, $offset]);
+    $borrowed_books = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    $error_message = "Database error: Unable to fetch borrowed books.";
+    error_log("Borrowed books fetch error: " . $e->getMessage());
+    $borrowed_books = [];
+    $total_pages = 1;
+}
 
 // Handle return book
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['return_book'])) {
@@ -57,9 +73,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['return_book'])) {
 
         $pdo->commit();
         $success_message = "Book returned successfully!";
+        // Refresh borrowed books after return
+        try {
+            $count_query = $pdo->prepare("SELECT COUNT(*) FROM transactions t JOIN books b ON t.book_id = b.id WHERE t.user_id = ? AND t.action = 'BORROW' AND t.returned_date IS NULL");
+            $count_query->execute([$user_id]);
+            $total_books = $count_query->fetchColumn();
+            $total_pages = ceil($total_books / $per_page);
+
+            $stmt = $pdo->prepare("
+                SELECT b.id, b.title, b.author, b.genre, t.borrowed_date
+                FROM transactions t
+                JOIN books b ON t.book_id = b.id
+                WHERE t.user_id = ? AND t.action = 'BORROW' AND t.returned_date IS NULL
+                ORDER BY t.borrowed_date DESC
+                LIMIT ? OFFSET ?
+            ");
+            $stmt->execute([$user_id, $per_page, $offset]);
+            $borrowed_books = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            $error_message = "Database error: Unable to refresh borrowed books.";
+            error_log("Borrowed books refresh error: " . $e->getMessage());
+            $borrowed_books = [];
+            $total_pages = 1;
+        }
     } catch (Exception $e) {
         $pdo->rollBack();
         $error_message = "Error returning book: " . $e->getMessage();
+        error_log("Return book error: " . $e->getMessage());
     }
 }
 ?>
@@ -106,7 +146,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['return_book'])) {
         <div class="main-content">
             <header>
                 <h1>Borrowed Books</h1>
-                <p>Welcome back, <?php echo htmlspecialchars($user['first_name'] . ' ' . $user['last_name']); ?>!</p>
+                <p>Welcome back, <?php echo htmlspecialchars($user['first_name'] . ' ' . $user['last_name'] ?? 'User'); ?>!</p>
             </header>
 
             <?php if ($success_message): ?>
@@ -138,9 +178,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['return_book'])) {
                                     <td><?php echo htmlspecialchars($book['genre']); ?></td>
                                     <td><?php echo htmlspecialchars(date('Y-m-d H:i:s', strtotime($book['borrowed_date']))); ?></td>
                                     <td>
-                                        <form method="POST">
+                                        <form method="POST" class="action-form">
                                             <input type="hidden" name="book_id" value="<?php echo $book['id']; ?>">
-                                            <button type="submit" name="return_book" class="action-btn">Return</button>
+                                            <button type="submit" name="return_book" class="action-btn"><i class="fas fa-undo"></i> Return</button>
                                         </form>
                                     </td>
                                 </tr>
