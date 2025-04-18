@@ -31,21 +31,45 @@ try {
 
 // Fetch borrowed books with pagination
 try {
-    $count_query = $pdo->prepare("SELECT COUNT(*) FROM transactions t JOIN books b ON t.book_id = b.id WHERE t.user_id = ? AND t.action = 'BORROW' AND t.returned_date IS NULL");
-    $count_query->execute([$user_id]);
+    $where_clause = $user_role === 'admin' ? '' : 'AND t.user_id = :user_id';
+    $count_query = $pdo->prepare("
+        SELECT COUNT(*)
+        FROM transactions t
+        JOIN books b ON t.book_id = b.id
+        JOIN users u ON t.user_id = u.id
+        WHERE t.action = 'BORROW' AND t.returned_date IS NULL
+        $where_clause
+    ");
+    if ($user_role !== 'admin') {
+        $count_query->bindValue(':user_id', $user_id, PDO::PARAM_INT);
+    }
+    $count_query->execute();
     $total_books = $count_query->fetchColumn();
     $total_pages = ceil($total_books / $per_page);
 
-    $stmt = $pdo->prepare("
-        SELECT b.id, b.title, b.author, b.genre, t.borrowed_date
+    $query = $pdo->prepare("
+        SELECT b.id, b.title, b.author, b.genre,
+               t.borrowed_date,
+               CASE
+                   WHEN b.genre = 'Narrative' THEN DATE_ADD(t.borrowed_date, INTERVAL 1 DAY)
+                   ELSE DATE_ADD(t.borrowed_date, INTERVAL 7 DAY)
+               END AS due_date,
+               u.first_name, u.last_name, u.student_id
         FROM transactions t
         JOIN books b ON t.book_id = b.id
-        WHERE t.user_id = ? AND t.action = 'BORROW' AND t.returned_date IS NULL
+        JOIN users u ON t.user_id = u.id
+        WHERE t.action = 'BORROW' AND t.returned_date IS NULL
+        $where_clause
         ORDER BY t.borrowed_date DESC
-        LIMIT ? OFFSET ?
+        LIMIT :limit OFFSET :offset
     ");
-    $stmt->execute([$user_id, $per_page, $offset]);
-    $borrowed_books = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    if ($user_role !== 'admin') {
+        $query->bindValue(':user_id', $user_id, PDO::PARAM_INT);
+    }
+    $query->bindValue(':limit', $per_page, PDO::PARAM_INT);
+    $query->bindValue(':offset', $offset, PDO::PARAM_INT);
+    $query->execute();
+    $borrowed_books = $query->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
     $error_message = "Database error: Unable to fetch borrowed books.";
     error_log("Borrowed books fetch error: " . $e->getMessage());
@@ -73,23 +97,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['return_book'])) {
 
         $pdo->commit();
         $success_message = "Book returned successfully!";
-        // Refresh borrowed books after return
+
+        // Refresh borrowed books
         try {
-            $count_query = $pdo->prepare("SELECT COUNT(*) FROM transactions t JOIN books b ON t.book_id = b.id WHERE t.user_id = ? AND t.action = 'BORROW' AND t.returned_date IS NULL");
-            $count_query->execute([$user_id]);
+            $where_clause = $user_role === 'admin' ? '' : 'AND t.user_id = :user_id';
+            $count_query = $pdo->prepare("
+                SELECT COUNT(*)
+                FROM transactions t
+                JOIN books b ON t.book_id = b.id
+                JOIN users u ON t.user_id = u.id
+                WHERE t.action = 'BORROW' AND t.returned_date IS NULL
+                $where_clause
+            ");
+            if ($user_role !== 'admin') {
+                $count_query->bindValue(':user_id', $user_id, PDO::PARAM_INT);
+            }
+            $count_query->execute();
             $total_books = $count_query->fetchColumn();
             $total_pages = ceil($total_books / $per_page);
 
-            $stmt = $pdo->prepare("
-                SELECT b.id, b.title, b.author, b.genre, t.borrowed_date
+            $query = $pdo->prepare("
+                SELECT b.id, b.title, b.author, b.genre,
+                       t.borrowed_date,
+                       CASE
+                           WHEN b.genre = 'Narrative' THEN DATE_ADD(t.borrowed_date, INTERVAL 1 DAY)
+                           ELSE DATE_ADD(t.borrowed_date, INTERVAL 7 DAY)
+                       END AS due_date,
+                       u.first_name, u.last_name, u.student_id
                 FROM transactions t
                 JOIN books b ON t.book_id = b.id
-                WHERE t.user_id = ? AND t.action = 'BORROW' AND t.returned_date IS NULL
+                JOIN users u ON t.user_id = u.id
+                WHERE t.action = 'BORROW' AND t.returned_date IS NULL
+                $where_clause
                 ORDER BY t.borrowed_date DESC
-                LIMIT ? OFFSET ?
+                LIMIT :limit OFFSET :offset
             ");
-            $stmt->execute([$user_id, $per_page, $offset]);
-            $borrowed_books = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            if ($user_role !== 'admin') {
+                $query->bindValue(':user_id', $user_id, PDO::PARAM_INT);
+            }
+            $query->bindValue(':limit', $per_page, PDO::PARAM_INT);
+            $query->bindValue(':offset', $offset, PDO::PARAM_INT);
+            $query->execute();
+            $borrowed_books = $query->fetchAll(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
             $error_message = "Database error: Unable to refresh borrowed books.";
             error_log("Borrowed books refresh error: " . $e->getMessage());
@@ -125,12 +174,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['return_book'])) {
             </div>
             <nav>
                 <a href="dashboard.php?tab=dashboard"><i class="fas fa-home"></i> <span>Dashboard</span></a>
-                <a href="available_books.php"><i class="fas fa-book-open"></i> <span>Available Books</span></a>
-                <a href="borrowed_books.php" class="active"><i class="fas fa-book-reader"></i> <span>Borrowed Books</span></a>
+                <a href="#" id="books-tab" class="active"><i class="fas fa-book"></i> <span>Books</span></a>
+                <ul class="sub-menu" id="books-menu" style="display: block;">
+                    <li><a href="available_books.php"><i class="fas fa-book-open"></i> <span>Available Books</span></a></li>
+                    <li><a href="borrowed_books.php" class="active"><i class="fas fa-book-reader"></i> <span>Borrowed Books</span></a></li>
+                    <?php if ($user_role === 'admin'): ?>
+                        <li><a href="dashboard.php?tab=add_book"><i class="fas fa-plus"></i> <span>Add Book</span></a></li>
+                    <?php endif; ?>
+                </ul>
                 <?php if ($user_role === 'admin'): ?>
-                    <a href="dashboard.php?tab=add_book"><i class="fas fa-plus"></i> <span>Add Book</span></a>
-                    <a href="dashboard.php?tab=add_student"><i class="fas fa-user-plus"></i> <span>Add Student</span></a>
-                    <a href="dashboard.php?tab=students"><i class="fas fa-users"></i> <span>Registered Students</span></a>
+                    <a href="#" id="students-tab"><i class="fas fa-users"></i> <span>Students</span></a>
+                    <ul class="sub-menu" id="students-menu" style="display: none;">
+                        <li><a href="dashboard.php?tab=add_student"><i class="fas fa-user-plus"></i> <span>Add Student</span></a></li>
+                        <li><a href="dashboard.php?tab=students"><i class="fas fa-list"></i> <span>Registered Students</span></a></li>
+                    </ul>
                     <a href="dashboard.php?tab=transactions"><i class="fas fa-exchange-alt"></i> <span>Transactions</span></a>
                     <a href="dashboard.php?tab=inventory"><i class="fas fa-boxes"></i> <span>Inventory</span></a>
                 <?php endif; ?>
@@ -166,7 +223,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['return_book'])) {
                                 <th>Title</th>
                                 <th>Author</th>
                                 <th>Genre</th>
+                                <?php if ($user_role === 'admin'): ?>
+                                    <th>Student ID</th>
+                                    <th>Borrower Name</th>
+                                <?php endif; ?>
                                 <th>Borrowed Date</th>
+                                <th>Due Date</th>
                                 <th>Action</th>
                             </tr>
                         </thead>
@@ -176,7 +238,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['return_book'])) {
                                     <td><?php echo htmlspecialchars($book['title']); ?></td>
                                     <td><?php echo htmlspecialchars($book['author']); ?></td>
                                     <td><?php echo htmlspecialchars($book['genre']); ?></td>
+                                    <?php if ($user_role === 'admin'): ?>
+                                        <td><?php echo htmlspecialchars($book['student_id'] ?? 'N/A'); ?></td>
+                                        <td><?php echo htmlspecialchars($book['first_name'] . ' ' . $book['last_name']); ?></td>
+                                    <?php endif; ?>
                                     <td><?php echo htmlspecialchars(date('Y-m-d H:i:s', strtotime($book['borrowed_date']))); ?></td>
+                                    <td><?php echo htmlspecialchars(date('Y-m-d H:i:s', strtotime($book['due_date']))); ?></td>
                                     <td>
                                         <form method="POST" class="action-form">
                                             <input type="hidden" name="book_id" value="<?php echo $book['id']; ?>">
@@ -205,5 +272,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['return_book'])) {
             </section>
         </div>
     </div>
+
+    <script>
+        const booksTab = document.getElementById('books-tab');
+        const booksMenu = document.getElementById('books-menu');
+        booksTab.addEventListener('click', function (e) {
+            e.preventDefault();
+            booksMenu.style.display = booksMenu.style.display === 'block' ? 'none' : 'block';
+        });
+
+        <?php if ($user_role === 'admin'): ?>
+        const studentsTab = document.getElementById('students-tab');
+        const studentsMenu = document.getElementById('students-menu');
+        if (studentsTab) {
+            studentsTab.addEventListener('click', function (e) {
+                e.preventDefault();
+                studentsMenu.style.display = studentsMenu.style.display === 'block' ? 'none' : 'block';
+            });
+        }
+        <?php endif; ?>
+    </script>
 </body>
 </html>
