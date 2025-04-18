@@ -79,25 +79,6 @@ body {
     color: white;
 }
 
-.sub-menu {
-    list-style: none;
-    background: #002244;
-    display: none;
-}
-
-.sidebar nav a:hover + .sub-menu, .sub-menu:hover {
-    display: block;
-}
-
-.sub-menu li a {
-    padding: 10px 20px 10px 40px;
-    font-size: 0.9rem;
-}
-
-.sub-menu li a.active {
-    background: #003366;
-}
-
 .logout {
     position: absolute;
     bottom: 20px;
@@ -572,6 +553,17 @@ button[type="submit"]:hover, .action-btn:hover {
     color: #003366;
 }
 
+/* Info Message */
+.info-message {
+    margin: 15px 0;
+    padding: 10px;
+    background: #e9f7ff;
+    border-left: 5px solid #003366;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    color: #333;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
     .sidebar {
@@ -602,14 +594,4 @@ button[type="submit"]:hover, .action-btn:hover {
     .dashboard-cards {
         grid-template-columns: 1fr;
     }
-}
-/* Add to existing styles.css */
-.info-message {
-    margin: 15px 0;
-    padding: 10px;
-    background: #e9f7ff;
-    border-left: 5px solid #003366;
-    border-radius: 4px;
-    font-size: 0.9rem;
-    color: #333;
 }

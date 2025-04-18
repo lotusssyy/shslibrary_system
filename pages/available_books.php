@@ -18,7 +18,7 @@ $offset = ($page - 1) * $per_page;
 // Fetch user details
 $stmt = $pdo->prepare("SELECT first_name, last_name, role FROM users WHERE id = ?");
 $stmt->execute([$user_id]);
-$user = $stmt->fetch(PDO::FETCH_ASSOC);
+$user = $stmt->fetch();
 $user_role = $user['role'] ?? 'student';
 
 // Fetch books with pagination
