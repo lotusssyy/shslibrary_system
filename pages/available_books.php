@@ -18,7 +18,7 @@ $offset = ($page - 1) * $per_page;
 // Fetch user details
 $stmt = $pdo->prepare("SELECT first_name, last_name, role FROM users WHERE id = ?");
 $stmt->execute([$user_id]);
-$user = $stmt->fetch();
+$user = $stmt->fetch(PDO::FETCH_ASSOC);
 $user_role = $user['role'] ?? 'student';
 
 // Fetch books with pagination
@@ -41,34 +41,6 @@ $stmt->bindValue(':limit', $per_page, PDO::PARAM_INT);
 $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
 $stmt->execute();
 $books = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-// Handle borrow book
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['borrow_book'])) {
-    $book_id = (int)$_POST['book_id'];
-    try {
-        $pdo->beginTransaction();
-
-        $check_stmt = $pdo->prepare("SELECT available FROM books WHERE id = ?");
-        $check_stmt->execute([$book_id]);
-        $book = $check_stmt->fetch(PDO::FETCH_ASSOC);
-
-        if (!$book || $book['available'] == 0) {
-            throw new Exception("This book is not available for borrowing.");
-        }
-
-        $stmt = $pdo->prepare("INSERT INTO transactions (user_id, book_id, action, borrowed_date) VALUES (?, ?, 'BORROW', NOW())");
-        $stmt->execute([$user_id, $book_id]);
-
-        $stmt = $pdo->prepare("UPDATE books SET available = available - 1 WHERE id = ?");
-        $stmt->execute([$book_id]);
-
-        $pdo->commit();
-        $success_message = "Book borrowed successfully! Please check your notices for confirmation.";
-    } catch (Exception $e) {
-        $pdo->rollBack();
-        $error_message = "Error borrowing book: " . $e->getMessage();
-    }
-}
 ?>
 
 <!DOCTYPE html>
@@ -130,6 +102,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['borrow_book'])) {
                 </form>
             </div>
 
+            <?php if ($user_role !== 'admin'): ?>
+                <p class="info-message">To borrow a book, please use the RFID and barcode scanner at the library counter.</p>
+            <?php endif; ?>
+
             <?php if (empty($books)): ?>
                 <p>No books available<?php echo $search ? " for '$search'" : ''; ?>.</p>
             <?php else: ?>
@@ -141,9 +117,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['borrow_book'])) {
                             <th>Genre</th>
                             <th>Barcode</th>
                             <th>Book Number</th>
-                            <?php if ($user_role !== 'admin'): ?>
-                                <th>Action</th>
-                            <?php endif; ?>
                         </tr>
                     </thead>
                     <tbody>
@@ -154,14 +127,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['borrow_book'])) {
                                 <td><?php echo htmlspecialchars($book['genre']); ?></td>
                                 <td><?php echo htmlspecialchars($book['barcode']); ?></td>
                                 <td><?php echo htmlspecialchars($book['book_number']); ?></td>
-                                <?php if ($user_role !== 'admin'): ?>
-                                    <td>
-                                        <form method="POST">
-                                            <input type="hidden" name="book_id" value="<?php echo $book['id']; ?>">
-                                            <button type="submit" name="borrow_book" class="action-btn">Borrow</button>
-                                        </form>
-                                    </td>
-                                <?php endif; ?>
                             </tr>
                         <?php endforeach; ?>
                     </tbody>
