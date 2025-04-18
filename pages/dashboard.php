@@ -243,390 +243,10 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - Library System</title>
+    <title>Dashboard - SHS Library System</title>
     <link rel="stylesheet" href="../css/styles.css">
-    <link rel="stylesheet" href="../css/admin-dashboard.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>
-        .alert-success {
-            padding: 10px;
-            margin: 15px 0;
-            border: 1px solid #28a745;
-            border-radius: 4px;
-            background-color: #d4edda;
-            color: #28a745;
-            font-size: 0.9rem;
-        }
-        .alert-error {
-            padding: 10px;
-            margin: 15px 0;
-            border: 1px solid #dc3545;
-            border-radius: 4px;
-            background-color: #f8d7da;
-            color: #dc3545;
-            font-size: 0.9rem;
-        }
-        /* Sidebar Styles (adjusted to avoid overriding .logout styles) */
-        .sidebar {
-            background: #003366;
-            color: white;
-            width: 250px;
-            height: 100vh;
-            position: fixed;
-            top: 0;
-            left: 0;
-            overflow-y: auto;
-        }
-        .sidebar-header {
-            padding: 20px;
-            text-align: center;
-        }
-        .sidebar-header h2 {
-            margin: 0;
-            font-size: 1.5rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-        }
-        .school-logo {
-            width: 40px;
-            height: 40px;
-        }
-        .sidebar nav {
-            padding: 20px 0;
-        }
-        .sidebar nav a:not(.logout a) {
-            display: flex;
-            align-items: center;
-            padding: 12px 20px;
-            color: white;
-            text-decoration: none;
-            font-size: 1rem;
-            transition: background 0.2s;
-        }
-        .sidebar nav a:not(.logout a) i {
-            margin-right: 10px;
-            font-size: 1.2rem;
-        }
-        .sidebar nav a:not(.logout a):hover {
-            background: #ffd700;
-            color: #003366;
-        }
-        .sidebar nav a.active {
-            background: #005588;
-            color: white;
-        }
-        /* Welcome Widget */
-        .welcome-widget {
-            background: linear-gradient(135deg, #003366 0%, #005588 100%);
-            color: white;
-            padding: 20px;
-            border-radius: 8px;
-            text-align: center;
-            margin-bottom: 20px;
-        }
-        .welcome-widget h1, .welcome-widget p {
-            color: white;
-        }
-        .avatar-initials {
-            width: 80px;
-            height: 80px;
-            background: linear-gradient(135deg, #ffd700 0%, #ffaa00 100%);
-            color: #003366;
-            font-size: 2rem;
-            font-weight: bold;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 50%;
-            margin: 0 auto 10px;
-        }
-        .quick-actions {
-            display: flex;
-            gap: 10px;
-            justify-content: center;
-            flex-wrap: wrap;
-            margin-top: 15px;
-        }
-        .action-btn {
-            padding: 8px 16px;
-            background: #ffd700;
-            color: #003366;
-            border-radius: 4px;
-            text-decoration: none;
-            font-size: 0.9rem;
-        }
-        .action-btn:hover {
-            background: #ffaa00;
-        }
-        .mini-search {
-            display: flex;
-            gap: 5px;
-        }
-        .mini-search input {
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            width: 200px;
-        }
-        .mini-search button {
-            padding: 8px;
-            background: #ffd700;
-            color: #003366;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-        /* Recent Books Grid */
-        .recent-books {
-            margin: 20px 0;
-        }
-        .books-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-        }
-        .book-card {
-            background: white;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            padding: 15px;
-            text-align: center;
-            transition: transform 0.2s;
-        }
-        .book-card:hover {
-            transform: scale(1.05);
-        }
-        .book-icon {
-            font-size: 3rem;
-            color: #003366;
-            background: linear-gradient(135deg, #f8f9fa 0%, #e0e0e0 100%);
-            padding: 20px;
-            border-radius: 8px;
-            margin-bottom: 10px;
-        }
-        .book-card h3 {
-            font-size: 1rem;
-            margin: 10px 0 5px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        .book-card p {
-            font-size: 0.9rem;
-            color: #666;
-        }
-        .view-btn {
-            display: inline-block;
-            padding: 6px 12px;
-            background: #003366;
-            color: white;
-            border-radius: 4px;
-            text-decoration: none;
-            font-size: 0.9rem;
-        }
-        .view-btn:hover {
-            background: #ffd700;
-            color: #003366;
-        }
-        /* Quick Stats */
-        .quick-stats {
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 20px;
-        }
-        .stat-card {
-            text-align: center;
-            padding: 10px;
-        }
-        .stat-card i {
-            font-size: 1.5rem;
-            color: #003366;
-            margin-bottom: 10px;
-            display: block;
-        }
-        .stat-card h3 {
-            font-size: 1.1rem;
-            margin: 0 0 5px;
-            color: #333;
-            font-weight: 500;
-        }
-        .stat-card p {
-            font-size: 1.4rem;
-            color: #003366;
-            margin: 0;
-            font-weight: bold;
-        }
-        /* Admin Dashboard Cards */
-        .dashboard-cards {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin: 20px 0;
-        }
-        .card {
-            background: white;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            padding: 15px;
-            text-align: center;
-        }
-        .card h3 {
-            font-size: 1.2rem;
-            margin: 0 0 10px;
-        }
-        .card p {
-            font-size: 1.5rem;
-            color: #003366;
-            margin: 0;
-        }
-        /* Admin Sections */
-        .form-group {
-            margin-bottom: 15px;
-        }
-        .form-group label {
-            display: block;
-            margin-bottom: 5px;
-        }
-        .form-group input, .form-group select {
-            width: 100%;
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-        }
-        .form-group .scan-btn {
-            display: block;
-            margin-top: 10px;
-            padding: 8px;
-            background: #003366;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-        .form-group .scan-btn:hover {
-            background: #ffd700;
-        }
-        button[type="submit"] {
-            padding: 10px 20px;
-            background: #003366;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-        button[type="submit"]:hover {
-            background: #ffd700;
-            color: #003366;
-        }
-        .reset-btn {
-            background-color: #003366;
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 3px;
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 0.9rem;
-        }
-        .reset-btn:hover {
-            background-color: #ffd700;
-            color: #003366;
-        }
-        .transaction-table, .inventory-table, .student-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 15px;
-        }
-        .transaction-table th, .transaction-table td,
-        .inventory-table th, .inventory-table td,
-        .student-table th, .student-table td {
-            padding: 10px;
-            text-align: left;
-            border: 1px solid #ddd;
-        }
-        .transaction-table th, .inventory-table th, .student-table th {
-            background-color: #003366;
-            color: white;
-        }
-        .transaction-table tr:nth-child(even),
-        .inventory-table tr:nth-child(even),
-        .student-table tr:nth-child(even) {
-            background-color: #f2f2f2;
-        }
-        .inventory-table th:nth-child(8), .inventory-table td:nth-child(8) {
-            text-align: center;
-        }
-        .remove-btn, .edit-btn {
-            padding: 6px 12px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-        .remove-btn {
-            background: #dc3545;
-            color: white;
-        }
-        .remove-btn:hover {
-            background: #c82333;
-        }
-        .edit-btn {
-            background: #007bff;
-            color: white;
-        }
-        .edit-btn:hover {
-            background: #0056b3;
-        }
-        .action-buttons {
-            display: flex;
-            gap: 10px;
-        }
-        .action-form {
-            display: inline;
-        }
-        .filter-form {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-        }
-        .filter-form .form-group {
-            display: flex;
-            flex-direction: column;
-        }
-        .pagination {
-            margin-top: 20px;
-            display: flex;
-            gap: 10px;
-            justify-content: center;
-        }
-        .pagination a {
-            padding: 8px 12px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            text-decoration: none;
-            color: #003366;
-        }
-        .pagination a.active {
-            background: #003366;
-            color: white;
-        }
-        .pagination a:hover {
-            background: #ffd700;
-            color: #003366;
-        }
-        .chart {
-            margin: 20px 0;
-        }
-    </style>
 </head>
 <body>
     <div class="container">
@@ -635,19 +255,19 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
             <div class="sidebar-header">
                 <h2>
                     <img src="../images/logo.png" alt="School Logo" class="school-logo">
-                    SHS LIBRARY
+                    SHS Library
                 </h2>
             </div>
             <nav>
-                <a href="dashboard.php?tab=dashboard" class="<?= $active_tab === 'dashboard' ? 'active' : '' ?>"><i class="fas fa-home"></i> <span>Dashboard</span></a>
+                <a href="dashboard.php?tab=dashboard" class="<?php echo $active_tab === 'dashboard' ? 'active' : ''; ?>"><i class="fas fa-home"></i> <span>Dashboard</span></a>
                 <a href="available_books.php"><i class="fas fa-book-open"></i> <span>Available Books</span></a>
                 <a href="borrowed_books.php"><i class="fas fa-book-reader"></i> <span>Borrowed Books</span></a>
                 <?php if ($user_role === 'admin'): ?>
-                    <a href="dashboard.php?tab=add_book" class="<?= $active_tab === 'add_book' ? 'active' : '' ?>"><i class="fas fa-plus"></i> <span>Add Book</span></a>
-                    <a href="dashboard.php?tab=add_student" class="<?= $active_tab === 'add_student' ? 'active' : '' ?>"><i class="fas fa-user-plus"></i> <span>Add Student</span></a>
-                    <a href="dashboard.php?tab=students" class="<?= $active_tab === 'students' ? 'active' : '' ?>"><i class="fas fa-users"></i> <span>Registered Students</span></a>
-                    <a href="dashboard.php?tab=transactions" class="<?= $active_tab === 'transactions' ? 'active' : '' ?>"><i class="fas fa-exchange-alt"></i> <span>Transactions</span></a>
-                    <a href="dashboard.php?tab=inventory" class="<?= $active_tab === 'inventory' ? 'active' : '' ?>"><i class="fas fa-boxes"></i> <span>Inventory</span></a>
+                    <a href="dashboard.php?tab=add_book" class="<?php echo $active_tab === 'add_book' ? 'active' : ''; ?>"><i class="fas fa-plus"></i> <span>Add Book</span></a>
+                    <a href="dashboard.php?tab=add_student" class="<?php echo $active_tab === 'add_student' ? 'active' : ''; ?>"><i class="fas fa-user-plus"></i> <span>Add Student</span></a>
+                    <a href="dashboard.php?tab=students" class="<?php echo $active_tab === 'students' ? 'active' : ''; ?>"><i class="fas fa-users"></i> <span>Registered Students</span></a>
+                    <a href="dashboard.php?tab=transactions" class="<?php echo $active_tab === 'transactions' ? 'active' : ''; ?>"><i class="fas fa-exchange-alt"></i> <span>Transactions</span></a>
+                    <a href="dashboard.php?tab=inventory" class="<?php echo $active_tab === 'inventory' ? 'active' : ''; ?>"><i class="fas fa-boxes"></i> <span>Inventory</span></a>
                 <?php endif; ?>
                 <a href="notices.php"><i class="fas fa-bell"></i> <span>Notices</span></a>
                 <a href="profile.php"><i class="fas fa-user"></i> <span>Profile</span></a>
@@ -830,7 +450,7 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                             echo "<p>No students registered in the database.</p>";
                         } else {
                         ?>
-                        <table class="student-table" id="student-table">
+                        <table class="styled-table" id="student-table">
                             <thead>
                                 <tr>
                                     <th>Name</th>
@@ -936,7 +556,7 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                             echo "<p class='no-transactions'>No transactions recorded.</p>";
                         } else {
                         ?>
-                        <table class="transaction-table">
+                        <table class="styled-table">
                             <thead>
                                 <tr>
                                     <th>Student Name</th>
@@ -1061,7 +681,7 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                             echo "<p class='no-records'>No books in the inventory.</p>";
                         } else {
                         ?>
-                        <table class="inventory-table">
+                        <table class="styled-table">
                             <thead>
                                 <tr>
                                     <th>Title</th>
@@ -1165,8 +785,8 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                             }]
                         },
                         options: {
-                            responsive: true;
-                            maintainAspectRatio: false;
+                            responsive: true,
+                            maintainAspectRatio: false,
                             scales: {
                                 x: { title: { display: true, text: 'Month' } },
                                 y: { title: { display: true, text: 'Number of Transactions' }, beginAtZero: true, ticks: { stepSize: 1 } }
@@ -1234,21 +854,4 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                             clearInterval(pollBarcode);
                         }
                         attempts++;
-                        if (attempts >= maxAttempts) {
-                            barcodeInput.value = "";
-                            alert("No barcode detected within 20 seconds.");
-                            clearInterval(pollBarcode);
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error scanning barcode:', error);
-                        barcodeInput.value = "";
-                        alert("Error scanning barcode.");
-                        clearInterval(pollBarcode);
-                    });
-                }, 500);
-            });
-        }
-    </script>
-</body>
-</html>
+                        if (
