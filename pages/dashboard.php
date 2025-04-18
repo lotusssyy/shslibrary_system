@@ -267,7 +267,7 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
             color: #dc3545;
             font-size: 0.9rem;
         }
-        /* Sidebar Styles */
+        /* Sidebar Styles (adjusted to avoid overriding .logout styles) */
         .sidebar {
             background: #003366;
             color: white;
@@ -297,7 +297,7 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
         .sidebar nav {
             padding: 20px 0;
         }
-        .sidebar nav a {
+        .sidebar nav a:not(.logout a) {
             display: flex;
             align-items: center;
             padding: 12px 20px;
@@ -306,11 +306,11 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
             font-size: 1rem;
             transition: background 0.2s;
         }
-        .sidebar nav a i {
+        .sidebar nav a:not(.logout a) i {
             margin-right: 10px;
             font-size: 1.2rem;
         }
-        .sidebar nav a:hover {
+        .sidebar nav a:not(.logout a):hover {
             background: #ffd700;
             color: #003366;
         }
@@ -651,7 +651,9 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                 <?php endif; ?>
                 <a href="notices.php"><i class="fas fa-bell"></i> <span>Notices</span></a>
                 <a href="profile.php"><i class="fas fa-user"></i> <span>Profile</span></a>
-                <a href="../logout.php"><i class="fas fa-sign-out-alt"></i> <span>Logout</span></a>
+                <div class="logout">
+                    <a href="../logout.php"><i class="fas fa-sign-out-alt"></i> <span>Logout</span></a>
+                </div>
             </nav>
         </div>
 
@@ -667,8 +669,7 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                                 echo htmlspecialchars($initials);
                                 ?>
                             </div>
-                            <?php $first_name = $user['first_name'] ?? 'User'; ?>
-                            <h1><?php echo htmlspecialchars("$greeting, $first_name!"); ?></h1>
+                            <h1><?php echo htmlspecialchars($greeting . ', ' . ($user['first_name'] ?? 'User') . '!'); ?></h1>
                             <p>Your Library at a Glance<?php echo $due_soon_count ? " - <strong>$due_soon_count book(s) due soon</strong>" : ''; ?></p>
                             <div class="quick-actions">
                                 <a href="borrowed_books.php" class="action-btn"><i class="fas fa-book-reader"></i> My Books (<?php echo $borrowed_count; ?>)</a>
@@ -773,7 +774,7 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                             </div>
                             <div class="form-group">
                                 <label>Email:</label>
-                                <input type="email" name="email" required>
+                                <input type="text" name="email" required>
                             </div>
                             <div class="form-group">
                                 <label>Password:</label>
@@ -1164,8 +1165,8 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                             }]
                         },
                         options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
+                            responsive: true;
+                            maintainAspectRatio: false;
                             scales: {
                                 x: { title: { display: true, text: 'Month' } },
                                 y: { title: { display: true, text: 'Number of Transactions' }, beginAtZero: true, ticks: { stepSize: 1 } }
