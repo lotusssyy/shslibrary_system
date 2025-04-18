@@ -1,3 +1,5 @@
+DASHBOARD.PHP:
+
 <?php
 include '../includes/db.php';
 session_start();

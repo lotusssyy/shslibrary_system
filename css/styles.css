@@ -23,7 +23,7 @@ body {
 /* Sidebar */
 .sidebar {
     width: 100%;
-    background: #003366; /* Solid blue to match dashboard.php */
+    background: linear-gradient(180deg, #003366, #00509e);
     color: white;
     padding: 15px;
     position: relative;
@@ -55,29 +55,20 @@ body {
     display: flex;
     align-items: center;
     text-decoration: none;
-    color: white;
+    color: #ecf0f1;
     font-size: 1rem;
-    font-family: Arial, sans-serif;
-    padding: 12px 20px;
-    transition: background 0.2s;
+    padding: 10px;
+    margin-bottom: 15px; /* Increased from 5px to 15px for more spacing between items */
+    border-radius: 5px;
+    transition: all 0.3s ease;
 }
 
-.sidebar nav a:hover {
-    background: #ffd700;
+.sidebar nav a.active, .sidebar nav a:hover {
+    background: linear-gradient(90deg, #ffd700, #ffc107);
     color: #003366;
+    box-shadow: 0 3px 5px rgba(0, 0, 0, 0.2);
 }
 
-.sidebar nav a.active {
-    background: #005588;
-    color: white;
-}
-
-.sidebar nav a i {
-    margin-right: 10px;
-    font-size: 1.2rem;
-}
-
-/* Submenu (unchanged) */
 .sidebar .sub-menu {
     list-style-type: none;
     padding-left: 20px;
@@ -88,13 +79,39 @@ body {
     font-size: 0.9rem;
     color: #bdc3c7;
     padding: 8px 10px;
-    margin-bottom: 10px;
+    margin-bottom: 10px; /* Added spacing between submenu items */
 }
 
 .sidebar .sub-menu li a.active, .sidebar .sub-menu li a:hover {
     background-color: #fce76c;
     color: #003366;
     border-radius: 5px;
+}
+
+.sidebar nav a i, .sidebar .sub-menu li a i {
+    margin-right: 8px;
+    font-size: 1rem;
+}
+
+.sidebar .logout {
+    margin-top: 30px; /* Increased from 15px to 30px for more spacing above Logout */
+}
+
+.sidebar .logout a {
+    text-align: center;
+    text-decoration: none;
+    background: linear-gradient(90deg, #ffd700, #ffc107);
+    color: #003366;
+    font-size: 1rem;
+    padding: 10px;
+    border-radius: 5px;
+    display: block;
+    transition: all 0.3s ease;
+}
+
+.sidebar .logout a:hover {
+    background: linear-gradient(90deg, #ffcc00, #e6b800);
+    color: white;
 }
 
 /* Main Content */
