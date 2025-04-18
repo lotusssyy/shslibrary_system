@@ -36,7 +36,10 @@ try {
 
 // Fetch data for student dashboard
 $borrowed_count = 0;
+$due_soon_count = 0;
 $recent_books = [];
+$books_borrowed_month = 0;
+$total_books_available = 0;
 if ($user_role === 'student') {
     try {
         // Count borrowed books
@@ -44,17 +47,35 @@ if ($user_role === 'student') {
         $stmt->execute([$user_id]);
         $borrowed_count = $stmt->fetchColumn();
 
+        // Count books due soon (within 7 days)
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM transactions WHERE user_id = ? AND action = 'BORROW' AND returned_date IS NULL AND borrowed_date <= NOW() - INTERVAL 7 DAY");
+        $stmt->execute([$user_id]);
+        $due_soon_count = $stmt->fetchColumn();
+
         // Fetch recent books
         $stmt = $pdo->prepare("SELECT id, title, author FROM books ORDER BY id DESC LIMIT 6");
         $stmt->execute();
         $recent_books = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Books borrowed this month
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM transactions WHERE user_id = ? AND action = 'BORROW' AND YEAR(borrowed_date) = YEAR(NOW()) AND MONTH(borrowed_date) = MONTH(NOW())");
+        $stmt->execute([$user_id]);
+        $books_borrowed_month = $stmt->fetchColumn();
+
+        // Total books available
+        $stmt = $pdo->query("SELECT SUM(available) FROM books");
+        $total_books_available = $stmt->fetchColumn();
     } catch (PDOException $e) {
         $error_message = "Database error: Unable to fetch student data.";
         error_log("Student data fetch error: " . $e->getMessage());
     }
 }
 
-// Handle adding a student (admin only)
+// Dynamic greeting based on time
+$hour = (int) date('H');
+$greeting = $hour < 12 ? "Good Morning" : ($hour < 18 ? "Good Afternoon" : "Good Evening");
+
+// Handle admin actions (unchanged from previous)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_student']) && $user_role === 'admin') {
     $first_name = trim($_POST['first_name']);
     $last_name = trim($_POST['last_name']);
@@ -100,8 +121,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['remove_student']) && 
         }
         $internal_student_id = $student['id'];
         $query = $pdo->prepare("DELETE FROM transactions WHERE user_id = ?");
-        $query->execute([$internal_student_id]);
-        $query = $pdo->prepare("DELETE FROM notices WHERE user_id = ?");
         $query->execute([$internal_student_id]);
         $query = $pdo->prepare("DELETE FROM users WHERE student_id = ? AND role = 'student'");
         $query->execute([$student_id]);
@@ -298,22 +317,30 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
         .inventory-table tr:nth-child(even) {
             background-color: #f2f2f2;
         }
-        .inventory-table th:nth-child(9), .inventory-table td:nth-child(9) {
+        .inventory-table th:nth-child(8), .inventory-table td:nth-child(8) {
             text-align: center;
         }
         /* Welcome Widget */
         .welcome-widget {
-            background: #f8f9fa;
+            background: linear-gradient(135deg, #003366 0%, #005588 100%);
+            color: white;
             padding: 20px;
             border-radius: 8px;
             text-align: center;
             margin-bottom: 20px;
         }
-        .avatar {
+        .avatar-initials {
             width: 80px;
             height: 80px;
+            background: linear-gradient(135deg, #ffd700 0%, #ffaa00 100%);
+            color: #003366;
+            font-size: 2rem;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             border-radius: 50%;
-            margin-bottom: 10px;
+            margin: 0 auto 10px;
         }
         .quick-actions {
             display: flex;
@@ -324,14 +351,14 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
         }
         .action-btn {
             padding: 8px 16px;
-            background: #003366;
-            color: white;
+            background: #ffd700;
+            color: #003366;
             border-radius: 4px;
             text-decoration: none;
             font-size: 0.9rem;
         }
         .action-btn:hover {
-            background: #ffd700;
+            background: #ffaa00;
         }
         .mini-search {
             display: flex;
@@ -345,50 +372,39 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
         }
         .mini-search button {
             padding: 8px;
-            background: #003366;
-            color: white;
+            background: #ffd700;
+            color: #003366;
             border: none;
             border-radius: 4px;
             cursor: pointer;
         }
-        /* Recent Books Carousel */
+        /* Recent Books Grid */
         .recent-books {
             margin: 20px 0;
         }
-        .carousel {
-            position: relative;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .carousel-track {
-            display: flex;
-            overflow-x: auto;
-            scroll-behavior: smooth;
+        .books-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 15px;
-            padding: 10px 0;
-            scrollbar-width: none;
-        }
-        .carousel-track::-webkit-scrollbar {
-            display: none;
         }
         .book-card {
-            flex: 0 0 200px;
             background: white;
             border: 1px solid #ddd;
             border-radius: 8px;
-            padding: 10px;
+            padding: 15px;
             text-align: center;
             transition: transform 0.2s;
         }
         .book-card:hover {
             transform: scale(1.05);
         }
-        .book-card img {
-            width: 100%;
-            height: 150px;
-            object-fit: cover;
-            border-radius: 4px;
+        .book-icon {
+            font-size: 3rem;
+            color: #003366;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e0e0e0 100%);
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 10px;
         }
         .book-card h3 {
             font-size: 1rem;
@@ -412,25 +428,34 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
         }
         .view-btn:hover {
             background: #ffd700;
+            color: #003366;
         }
-        .carousel-prev, .carousel-next {
-            background: #003366;
-            color: white;
-            border: none;
-            padding: 10px;
-            border-radius: 50%;
-            cursor: pointer;
-            position: absolute;
-            z-index: 1;
+        /* Quick Stats */
+        .quick-stats {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
         }
-        .carousel-prev {
-            left: -30px;
+        .stat-card {
+            text-align: center;
         }
-        .carousel-next {
-            right: -30px;
+        .stat-card i {
+            font-size: 1.5rem;
+            color: #003366;
+            margin-bottom: 10px;
         }
-        .carousel-prev:hover, .carousel-next:hover {
-            background: #ffd700;
+        .stat-card h3 {
+            font-size: 1.2rem;
+            margin: 0;
+        }
+        .stat-card p {
+            font-size: 1.5rem;
+            color: #003366;
+            margin: 5px 0 0;
         }
     </style>
 </head>
@@ -463,12 +488,11 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                     <a href="dashboard.php?tab=transactions" id="transactions-tab" class="<?= $active_tab === 'transactions' ? 'active' : '' ?>"><i class="fas fa-exchange-alt"></i> <span>Transactions</span></a>
                     <a href="dashboard.php?tab=inventory" id="inventory-tab" class="<?= $active_tab === 'inventory' ? 'active' : '' ?>"><i class="fas fa-boxes"></i> <span>Inventory</span></a>
                 <?php endif; ?>
-                <a href="notices.php"><i class="fas fa-bell"></i> <span>Notices</span></a>
                 <a href="profile.php"><i class="fas fa-user"></i> <span>Profile</span></a>
+                <div class="logout">
+                    <a href="../logout.php"><i class="fas fa-sign-out-alt"></i> <span>Logout</span></a>
+                </div>
             </nav>
-            <div class="logout">
-                <a href="../logout.php"><i class="fas fa-sign-out-alt"></i> <span>Logout</span></a>
-            </div>
         </div>
 
         <!-- Main Content -->
@@ -477,11 +501,16 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                 <?php if ($user_role === 'student'): ?>
                     <header>
                         <div class="welcome-widget">
-                            <img src="../images/default-avatar.png" alt="Profile" class="avatar">
-                            <h1>Hello, <?php echo htmlspecialchars($user['first_name'] ?? 'User'); ?>!</h1>
-                            <p>Your Library at a Glance</p>
+                            <div class="avatar-initials">
+                                <?php
+                                $initials = strtoupper(substr($user['first_name'] ?? 'U', 0, 1) . substr($user['last_name'] ?? '', 0, 1));
+                                echo htmlspecialchars($initials);
+                                ?>
+                            </div>
+                            <h1><?php echo htmlspecialchars("$greeting, {$user['first_name'] ?? 'User'}!"); ?></h1>
+                            <p>Your Library at a Glance<?php echo $due_soon_count ? " - <strong>$due_soon_count book(s) due soon</strong>" : ''; ?></p>
                             <div class="quick-actions">
-                                <a href="borrowed_books.php" class="action-btn">My Books (<?php echo $borrowed_count; ?>)</a>
+                                <a href="borrowed_books.php" class="action-btn"><i class="fas fa-book-reader"></i> My Books (<?php echo $borrowed_count; ?>)</a>
                                 <form action="available_books.php" method="GET" class="mini-search">
                                     <input type="text" name="search" placeholder="Find a book..." required>
                                     <button type="submit"><i class="fas fa-search"></i></button>
@@ -489,25 +518,33 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                             </div>
                         </div>
                     </header>
+                    <section class="quick-stats">
+                        <div class="stat-card">
+                            <i class="fas fa-book"></i>
+                            <h3>Borrowed This Month</h3>
+                            <p><?php echo $books_borrowed_month; ?></p>
+                        </div>
+                        <div class="stat-card">
+                            <i class="fas fa-books"></i>
+                            <h3>Books Available</h3>
+                            <p><?php echo $total_books_available; ?></p>
+                        </div>
+                    </section>
                     <section class="recent-books">
                         <h2>Recently Added Books</h2>
-                        <div class="carousel">
-                            <button class="carousel-prev"><i class="fas fa-chevron-left"></i></button>
-                            <div class="carousel-track">
-                                <?php if (empty($recent_books)): ?>
-                                    <p>No recent books available.</p>
-                                <?php else: ?>
-                                    <?php foreach ($recent_books as $book): ?>
-                                        <div class="book-card">
-                                            <img src="../images/default-book.png" alt="Cover">
-                                            <h3><?php echo htmlspecialchars($book['title']); ?></h3>
-                                            <p><?php echo htmlspecialchars($book['author']); ?></p>
-                                            <a href="available_books.php" class="view-btn">View Details</a>
-                                        </div>
-                                    <?php endforeach; ?>
-                                <?php endif; ?>
-                            </div>
-                            <button class="carousel-next"><i class="fas fa-chevron-right"></i></button>
+                        <div class="books-grid">
+                            <?php if (empty($recent_books)): ?>
+                                <p>No recent books available.</p>
+                            <?php else: ?>
+                                <?php foreach ($recent_books as $book): ?>
+                                    <div class="book-card">
+                                        <i class="fas fa-book book-icon"></i>
+                                        <h3><?php echo htmlspecialchars($book['title']); ?></h3>
+                                        <p><?php echo htmlspecialchars($book['author']); ?></p>
+                                        <a href="available_books.php" class="view-btn">View Details</a>
+                                    </div>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
                         </div>
                     </section>
                 <?php else: ?>
@@ -1072,19 +1109,6 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                         }
                     });
                 }, 500);
-            });
-        }
-
-        // Carousel navigation
-        const carousel = document.querySelector('.carousel-track');
-        const prevBtn = document.querySelector('.carousel-prev');
-        const nextBtn = document.querySelector('.carousel-next');
-        if (carousel && prevBtn && nextBtn) {
-            prevBtn.addEventListener('click', () => {
-                carousel.scrollBy({ left: -220, behavior: 'smooth' });
-            });
-            nextBtn.addEventListener('click', () => {
-                carousel.scrollBy({ left: 220, behavior: 'smooth' });
             });
         }
     </script>
