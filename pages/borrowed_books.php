@@ -76,81 +76,6 @@ try {
     $borrowed_books = [];
     $total_pages = 1;
 }
-
-// Handle return book
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['return_book'])) {
-    $book_id = (int)$_POST['book_id'];
-    try {
-        $pdo->beginTransaction();
-
-        $check_stmt = $pdo->prepare("SELECT id FROM transactions WHERE user_id = ? AND book_id = ? AND action = 'BORROW' AND returned_date IS NULL");
-        $check_stmt->execute([$user_id, $book_id]);
-        if (!$check_stmt->fetch()) {
-            throw new Exception("This book is not borrowed by you.");
-        }
-
-        $stmt = $pdo->prepare("UPDATE transactions SET returned_date = NOW() WHERE user_id = ? AND book_id = ? AND action = 'BORROW' AND returned_date IS NULL");
-        $stmt->execute([$user_id, $book_id]);
-
-        $stmt = $pdo->prepare("UPDATE books SET available = available + 1 WHERE id = ?");
-        $stmt->execute([$book_id]);
-
-        $pdo->commit();
-        $success_message = "Book returned successfully!";
-
-        // Refresh borrowed books
-        try {
-            $where_clause = $user_role === 'admin' ? '' : 'AND t.user_id = :user_id';
-            $count_query = $pdo->prepare("
-                SELECT COUNT(*)
-                FROM transactions t
-                JOIN books b ON t.book_id = b.id
-                JOIN users u ON t.user_id = u.id
-                WHERE t.action = 'BORROW' AND t.returned_date IS NULL
-                $where_clause
-            ");
-            if ($user_role !== 'admin') {
-                $count_query->bindValue(':user_id', $user_id, PDO::PARAM_INT);
-            }
-            $count_query->execute();
-            $total_books = $count_query->fetchColumn();
-            $total_pages = ceil($total_books / $per_page);
-
-            $query = $pdo->prepare("
-                SELECT b.id, b.title, b.author, b.genre,
-                       t.borrowed_date,
-                       CASE
-                           WHEN b.genre = 'Narrative' THEN DATE_ADD(t.borrowed_date, INTERVAL 1 DAY)
-                           ELSE DATE_ADD(t.borrowed_date, INTERVAL 7 DAY)
-                       END AS due_date,
-                       u.first_name, u.last_name, u.student_id
-                FROM transactions t
-                JOIN books b ON t.book_id = b.id
-                JOIN users u ON t.user_id = u.id
-                WHERE t.action = 'BORROW' AND t.returned_date IS NULL
-                $where_clause
-                ORDER BY t.borrowed_date DESC
-                LIMIT :limit OFFSET :offset
-            ");
-            if ($user_role !== 'admin') {
-                $query->bindValue(':user_id', $user_id, PDO::PARAM_INT);
-            }
-            $query->bindValue(':limit', $per_page, PDO::PARAM_INT);
-            $query->bindValue(':offset', $offset, PDO::PARAM_INT);
-            $query->execute();
-            $borrowed_books = $query->fetchAll(PDO::FETCH_ASSOC);
-        } catch (PDOException $e) {
-            $error_message = "Database error: Unable to refresh borrowed books.";
-            error_log("Borrowed books refresh error: " . $e->getMessage());
-            $borrowed_books = [];
-            $total_pages = 1;
-        }
-    } catch (Exception $e) {
-        $pdo->rollBack();
-        $error_message = "Error returning book: " . $e->getMessage();
-        error_log("Return book error: " . $e->getMessage());
-    }
-}
 ?>
 
 <!DOCTYPE html>
@@ -229,7 +154,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['return_book'])) {
                                 <?php endif; ?>
                                 <th>Borrowed Date</th>
                                 <th>Due Date</th>
-                                <th>Action</th>
+                                <?php if ($user_role === 'admin'): ?>
+                                    <th>Action</th>
+                                <?php endif; ?>
                             </tr>
                         </thead>
                         <tbody>
@@ -244,12 +171,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['return_book'])) {
                                     <?php endif; ?>
                                     <td><?php echo htmlspecialchars(date('Y-m-d H:i:s', strtotime($book['borrowed_date']))); ?></td>
                                     <td><?php echo htmlspecialchars(date('Y-m-d H:i:s', strtotime($book['due_date']))); ?></td>
-                                    <td>
-                                        <form method="POST" class="action-form">
-                                            <input type="hidden" name="book_id" value="<?php echo $book['id']; ?>">
-                                            <button type="submit" name="return_book" class="action-btn"><i class="fas fa-undo"></i> Return</button>
-                                        </form>
-                                    </td>
+                                    <?php if ($user_role === 'admin'): ?>
+                                        <td>
+                                            <form method="POST" class="action-form">
+                                                <input type="hidden" name="book_id" value="<?php echo $book['id']; ?>">
+                                                <button type="submit" name="return_book" class="action-btn"><i class="fas fa-undo"></i> Return</button>
+                                            </form>
+                                        </td>
+                                    <?php endif; ?>
                                 </tr>
                             <?php endforeach; ?>
                         </tbody>
