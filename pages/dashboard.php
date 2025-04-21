@@ -142,7 +142,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $user_role === 'admin') {
         $author = trim($_POST['author'] ?? '');
         $genre = trim($_POST['genre'] ?? '');
         $barcode = trim($_POST['barcode'] ?? '');
-        $book_number = trim($_POST['book_number'] ?? '');
+        $book_number = trim($_ STUDENT['book_number'] ?? '');
 
         try {
             $query = $pdo->prepare("INSERT INTO books (title, author, genre, barcode, book_number, available, total_quantity) VALUES (?, ?, ?, ?, ?, 1, 1)");
@@ -412,7 +412,7 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                             </div>
                             <div class="form-group">
                                 <label>Password:</label>
-                                <input type="password" name="password" required>
+                                <input type="text" name="password" required>
                             </div>
                             <div class="form-group">
                                 <label>RFID Number:</label>
@@ -781,11 +781,16 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
         const returnedChartCanvas = document.getElementById('returnedBooksChart');
         if (borrowedChartCanvas && returnedChartCanvas) {
             fetch('../fetch_book_transactions.php')
-                .then(response => response.json())
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! Status: ${response.status}`);
+                    }
+                    return response.json();
+                })
                 .then(data => {
                     if (data.error) {
                         console.error('Error fetching chart data:', data.error);
-                        document.querySelector('.charts').innerHTML = '<p>No transaction data available to display charts.</p>';
+                        document.querySelector('.charts').innerHTML = `<p>Error: ${data.error}</p>`;
                         return;
                     }
 
@@ -794,7 +799,9 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                     const hasReturnData = data.return_values.some(value => value > 0);
 
                     if (!hasBorrowData && !hasReturnData) {
-                        document.querySelector('.charts').innerHTML = '<p>No transactions in the last 12 months to display.</p>';
+                       
+
+ document.querySelector('.charts').innerHTML = '<p>No transactions in the last 12 months to display.</p>';
                         return;
                     }
 
@@ -862,7 +869,7 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                 })
                 .catch(error => {
                     console.error('Error loading chart data:', error);
-                    document.querySelector('.charts').innerHTML = '<p>Error loading transaction data for charts.</p>';
+                    document.querySelector('.charts').innerHTML = `<p>Error loading transaction data for charts: ${error.message}</p>`;
                 });
         }
 
