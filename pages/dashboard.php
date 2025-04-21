@@ -550,11 +550,21 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                             $total_pages = ceil($total_transactions / $per_page);
 
                             $query = $pdo->prepare("
-                                SELECT t.id, t.action, COALESCE(t.borrowed_date, t.returned_date) AS transaction_date, u.first_name, u.last_name, u.email, u.student_id
+                                SELECT t.id, t.action,
+                                       CASE 
+                                           WHEN t.action = 'BORROW' THEN t.borrowed_date
+                                           WHEN t.action = 'RETURN' THEN t.returned_date
+                                           ELSE '1970-01-01 00:00:00' -- Fallback for unexpected cases
+                                       END AS transaction_date,
+                                       u.first_name, u.last_name, u.email, u.student_id
                                 FROM transactions t
                                 JOIN users u ON t.user_id = u.id
                                 WHERE t.action IN ('BORROW', 'RETURN')
-                                ORDER BY COALESCE(t.borrowed_date, t.returned_date) DESC
+                                ORDER BY CASE 
+                                             WHEN t.action = 'BORROW' THEN t.borrowed_date
+                                             WHEN t.action = 'RETURN' THEN t.returned_date
+                                             ELSE '1970-01-01 00:00:00'
+                                         END DESC
                                 LIMIT :limit OFFSET :offset
                             ");
                             $query->bindValue(':limit', $per_page, PDO::PARAM_INT);
