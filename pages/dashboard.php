@@ -785,64 +785,85 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                 .then(data => {
                     if (data.error) {
                         console.error('Error fetching chart data:', data.error);
+                        document.querySelector('.charts').innerHTML = '<p>No transaction data available to display charts.</p>';
+                        return;
+                    }
+
+                    // Check if there's any non-zero data
+                    const hasBorrowData = data.borrow_values.some(value => value > 0);
+                    const hasReturnData = data.return_values.some(value => value > 0);
+
+                    if (!hasBorrowData && !hasReturnData) {
+                        document.querySelector('.charts').innerHTML = '<p>No transactions in the last 12 months to display.</p>';
                         return;
                     }
 
                     // Borrowed Books Chart
-                    new Chart(borrowedChartCanvas, {
-                        type: 'line',
-                        data: {
-                            labels: data.borrow_labels,
-                            datasets: [{
-                                label: 'Borrowed Books',
-                                data: data.borrow_values,
-                                borderColor: '#003366',
-                                backgroundColor: 'rgba(0, 51, 102, 0.2)',
-                                fill: true
-                            }]
-                        },
-                        options: {
-                            responsive: true,
-                            scales: {
-                                y: {
-                                    beginAtZero: true,
-                                    title: { display: true, text: 'Number of Books Borrowed' }
-                                },
-                                x: {
-                                    title: { display: true, text: 'Month' }
+                    if (hasBorrowData) {
+                        new Chart(borrowedChartCanvas, {
+                            type: 'line',
+                            data: {
+                                labels: data.borrow_labels,
+                                datasets: [{
+                                    label: 'Borrowed Books',
+                                    data: data.borrow_values,
+                                    borderColor: '#003366',
+                                    backgroundColor: 'rgba(0, 51, 102, 0.2)',
+                                    fill: true
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                scales: {
+                                    y: {
+                                        beginAtZero: true,
+                                        title: { display: true, text: 'Number of Books Borrowed' }
+                                    },
+                                    x: {
+                                        title: { display: true, text: 'Month' }
+                                    }
                                 }
                             }
-                        }
-                    });
+                        });
+                    } else {
+                        borrowedChartCanvas.parentElement.innerHTML = '<h2>Borrowed Books</h2><p>No borrow transactions in the last 12 months.</p>';
+                    }
 
                     // Returned Books Chart
-                    new Chart(returnedChartCanvas, {
-                        type: 'line',
-                        data: {
-                            labels: data.return_labels,
-                            datasets: [{
-                                label: 'Returned Books',
-                                data: data.return_values,
-                                borderColor: '#006699',
-                                backgroundColor: 'rgba(0, 102, 153, 0.2)',
-                                fill: true
-                            }]
-                        },
-                        options: {
-                            responsive: true,
-                            scales: {
-                                y: {
-                                    beginAtZero: true,
-                                    title: { display: true, text: 'Number of Books Returned' }
-                                },
-                                x: {
-                                    title: { display: true, text: 'Month' }
+                    if (hasReturnData) {
+                        new Chart(returnedChartCanvas, {
+                            type: 'line',
+                            data: {
+                                labels: data.return_labels,
+                                datasets: [{
+                                    label: 'Returned Books',
+                                    data: data.return_values,
+                                    borderColor: '#006699',
+                                    backgroundColor: 'rgba(0, 102, 153, 0.2)',
+                                    fill: true
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                scales: {
+                                    y: {
+                                        beginAtZero: true,
+                                        title: { display: true, text: 'Number of Books Returned' }
+                                    },
+                                    x: {
+                                        title: { display: true, text: 'Month' }
+                                    }
                                 }
                             }
-                        }
-                    });
+                        });
+                    } else {
+                        returnedChartCanvas.parentElement.innerHTML = '<h2>Returned Books</h2><p>No return transactions in the last 12 months.</p>';
+                    }
                 })
-                .catch(error => console.error('Error loading chart data:', error));
+                .catch(error => {
+                    console.error('Error loading chart data:', error);
+                    document.querySelector('.charts').innerHTML = '<p>Error loading transaction data for charts.</p>';
+                });
         }
 
         // RFID Scanning
