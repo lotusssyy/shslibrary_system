@@ -50,10 +50,7 @@ try {
     $query = $pdo->prepare("
         SELECT b.id, b.title, b.author, b.genre,
                t.borrowed_date,
-               CASE
-                   WHEN b.genre = 'Narrative' THEN DATE_ADD(t.borrowed_date, INTERVAL 1 DAY)
-                   ELSE DATE_ADD(t.borrowed_date, INTERVAL 7 DAY)
-               END AS due_date,
+               t.due_date AS due_date,
                u.first_name, u.last_name, u.student_id
         FROM transactions t
         JOIN books b ON t.book_id = b.id
@@ -170,7 +167,7 @@ try {
                                         <td><?php echo htmlspecialchars($book['first_name'] . ' ' . $book['last_name']); ?></td>
                                     <?php endif; ?>
                                     <td><?php echo htmlspecialchars(date('Y-m-d H:i:s', strtotime($book['borrowed_date']))); ?></td>
-                                    <td><?php echo htmlspecialchars(date('Y-m-d H:i:s', strtotime($book['due_date']))); ?></td>
+                                    <td><?php echo htmlspecialchars(date('Y-m-d', strtotime($book['due_date']))); ?></td>
                                     <?php if ($user_role === 'admin'): ?>
                                         <td>
                                             <form method="POST" class="action-form">
