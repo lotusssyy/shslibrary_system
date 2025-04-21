@@ -2,12 +2,11 @@
 header("Content-Type: text/plain");
 require 'includes/db.php';
 
-// Include PHPMailer (adjust path as needed)
-require 'vendor/autoload.php'; // If using Composer
+// Include PHPMailer
+require 'vendor/autoload.php';
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
-// Disable displaying errors to client, log them instead
 error_reporting(E_ALL);
 ini_set('display_errors', 0);
 
@@ -50,7 +49,7 @@ try {
 
     error_log("Debug - User ID: $user_id, Book ID: $book_id, Available: $book_available, Total Quantity: $total_quantity");
 
-    // Calculate due date based on genre
+    // Calculate due date
     $due_date = date('Y-m-d', strtotime("+7 days"));
     switch (strtoupper($book_genre)) {
         case 'FICTION':
@@ -80,7 +79,7 @@ try {
         $update_book = $pdo->prepare("UPDATE books SET available = available - 1 WHERE id = ?");
         $update_book->execute([$book_id]);
 
-        // Try inserting with transaction_date, fallback to borrowed_date
+        // Insert BORROW transaction
         try {
             $trans_query = $pdo->prepare("INSERT INTO transactions (user_id, book_id, action, transaction_date, due_date) VALUES (?, ?, 'BORROW', NOW(), ?)");
             $trans_query->execute([$user_id, $book_id, $due_date]);
@@ -98,8 +97,8 @@ try {
             throw new Exception("BOOK_ALREADY_RETURNED");
         }
 
-        // Check if this book was borrowed by the user
-        $check_borrow = $pdo->prepare("SELECT id FROM transactions WHERE user_id = ? AND book_id = ? AND action = 'BORROW' ORDER BY id DESC LIMIT 1");
+        // Check if book was borrowed by user
+        $check_borrow = $pdo->prepare("SELECT id FROM transactions WHERE user_id = ? AND book_id = ? AND action = 'BORROW' AND returned_date IS NULL ORDER BY id DESC LIMIT 1");
         $check_borrow->execute([$user_id, $book_id]);
         $borrow_record = $check_borrow->fetch(PDO::FETCH_ASSOC);
         if (!$borrow_record) {
@@ -107,20 +106,14 @@ try {
         }
         error_log("Debug - Found BORROW record ID: " . $borrow_record['id']);
 
-        // Update the book availability
+        // Update the BORROW transaction's returned_date
+        $update_trans = $pdo->prepare("UPDATE transactions SET returned_date = NOW() WHERE id = ?");
+        $update_trans->execute([$borrow_record['id']]);
+        error_log("Debug - Updated returned_date for transaction ID: " . $borrow_record['id']);
+
+        // Update book availability
         $update_book = $pdo->prepare("UPDATE books SET available = available + 1 WHERE id = ?");
         $update_book->execute([$book_id]);
-
-        // Insert a new RETURN transaction with fallback
-        try {
-            $trans_query = $pdo->prepare("INSERT INTO transactions (user_id, book_id, action, transaction_date) VALUES (?, ?, 'RETURN', NOW())");
-            $trans_query->execute([$user_id, $book_id]);
-        } catch (PDOException $e) {
-            error_log("Return INSERT failed: " . $e->getMessage());
-            // Fallback to returned_date if transaction_date fails
-            $trans_query = $pdo->prepare("INSERT INTO transactions (user_id, book_id, action, returned_date) VALUES (?, ?, 'RETURN', NOW())");
-            $trans_query->execute([$user_id, $book_id]);
-        }
 
         $pdo->commit();
         echo "RETURN_SUCCESS";
@@ -141,7 +134,7 @@ function notifyStudent($user_id, $email, $book_title, $action, $due_date) {
 
     error_log("Sending notification to $email for $action of '$book_title'");
 
-    $message = ($action === "borrowed") 
+    $message = ($action === "borrowed")
         ? "You have borrowed '$book_title'. Due date: $due_date."
         : "You have returned '$book_title'.";
     $notice_query = $pdo->prepare("INSERT INTO notices (user_id, message, created_at) VALUES (?, ?, NOW())");
@@ -160,10 +153,10 @@ function notifyStudent($user_id, $email, $book_title, $action, $due_date) {
         $mail->setFrom('libraryuclm@gmail.com', 'SHS Library System');
         $mail->addAddress($email);
 
-        $subject = ($action === "borrowed") 
+        $subject = ($action === "borrowed")
             ? "Book Borrowed: $book_title"
             : "Book Returned: $book_title";
-        $body = ($action === "borrowed") 
+        $body = ($action === "borrowed")
             ? "Dear Student,\n\nYou have successfully borrowed '$book_title'. Please return it by $due_date.\n\nRegards,\nSHS Library System"
             : "Dear Student,\n\nYou have successfully returned '$book_title'.\n\nRegards,\nSHS Library System";
         $mail->Subject = $subject;
