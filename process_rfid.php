@@ -2,7 +2,6 @@
 header("Content-Type: text/plain");
 require 'includes/db.php';
 
-// Include PHPMailer
 require 'vendor/autoload.php';
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
@@ -24,7 +23,6 @@ try {
     $pdo->beginTransaction();
     error_log("Starting transaction for RFID: $rfid_number, Action: $action, Barcode: $barcode");
 
-    // Validate user
     $user_query = $pdo->prepare("SELECT id, email FROM users WHERE rfid_number = ?");
     $user_query->execute([$rfid_number]);
     $user = $user_query->fetch(PDO::FETCH_ASSOC);
@@ -34,7 +32,6 @@ try {
     $user_id = $user['id'];
     $user_email = $user['email'];
 
-    // Validate book
     $book_query = $pdo->prepare("SELECT id, genre, title, available, total_quantity FROM books WHERE barcode = ?");
     $book_query->execute([$barcode]);
     $book = $book_query->fetch(PDO::FETCH_ASSOC);
@@ -49,7 +46,6 @@ try {
 
     error_log("Debug - User ID: $user_id, Book ID: $book_id, Available: $book_available, Total Quantity: $total_quantity");
 
-    // Calculate due date
     $due_date = date('Y-m-d', strtotime("+7 days"));
     switch (strtoupper($book_genre)) {
         case 'FICTION':
@@ -79,15 +75,8 @@ try {
         $update_book = $pdo->prepare("UPDATE books SET available = available - 1 WHERE id = ?");
         $update_book->execute([$book_id]);
 
-        // Insert BORROW transaction
-        try {
-            $trans_query = $pdo->prepare("INSERT INTO transactions (user_id, book_id, action, transaction_date, due_date) VALUES (?, ?, 'BORROW', NOW(), ?)");
-            $trans_query->execute([$user_id, $book_id, $due_date]);
-        } catch (PDOException $e) {
-            error_log("Borrow INSERT failed: " . $e->getMessage());
-            $trans_query = $pdo->prepare("INSERT INTO transactions (user_id, book_id, action, borrowed_date, due_date) VALUES (?, ?, 'BORROW', NOW(), ?)");
-            $trans_query->execute([$user_id, $book_id, $due_date]);
-        }
+        $trans_query = $pdo->prepare("INSERT INTO transactions (user_id, book_id, action, borrowed_date, due_date) VALUES (?, ?, 'BORROW', NOW(), ?)");
+        $trans_query->execute([$user_id, $book_id, $due_date]);
 
         $pdo->commit();
         echo "BORROW_SUCCESS";
@@ -97,7 +86,6 @@ try {
             throw new Exception("BOOK_ALREADY_RETURNED");
         }
 
-        // Check if book was borrowed by user
         $check_borrow = $pdo->prepare("SELECT id FROM transactions WHERE user_id = ? AND book_id = ? AND action = 'BORROW' AND returned_date IS NULL ORDER BY id DESC LIMIT 1");
         $check_borrow->execute([$user_id, $book_id]);
         $borrow_record = $check_borrow->fetch(PDO::FETCH_ASSOC);
@@ -106,12 +94,10 @@ try {
         }
         error_log("Debug - Found BORROW record ID: " . $borrow_record['id']);
 
-        // Update the BORROW transaction's returned_date
         $update_trans = $pdo->prepare("UPDATE transactions SET returned_date = NOW() WHERE id = ?");
         $update_trans->execute([$borrow_record['id']]);
         error_log("Debug - Updated returned_date for transaction ID: " . $borrow_record['id']);
 
-        // Update book availability
         $update_book = $pdo->prepare("UPDATE books SET available = available + 1 WHERE id = ?");
         $update_book->execute([$book_id]);
 
@@ -124,7 +110,7 @@ try {
 } catch (Exception $e) {
     $pdo->rollBack();
     $error_message = $e->getMessage();
-    error_log("Transaction failed: $error_message");
+    error_log("Transaction failed: " . $error_message);
     echo "TRANSACTION_ERROR: " . $error_message;
     exit;
 }
