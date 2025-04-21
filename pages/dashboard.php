@@ -142,7 +142,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $user_role === 'admin') {
         $author = trim($_POST['author'] ?? '');
         $genre = trim($_POST['genre'] ?? '');
         $barcode = trim($_POST['barcode'] ?? '');
-        $book_number = trim($_ STUDENT['book_number'] ?? '');
+        $book_number = trim($_POST['book_number'] ?? '');
 
         try {
             $query = $pdo->prepare("INSERT INTO books (title, author, genre, barcode, book_number, available, total_quantity) VALUES (?, ?, ?, ?, ?, 1, 1)");
