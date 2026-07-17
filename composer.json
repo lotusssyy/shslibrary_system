@@ -1,0 +1,12 @@
+{
+    "require": {
+        "phpmailer/phpmailer": "^6.8",
+        "cboden/ratchet": "^0.4.4",
+        "ext-pdo": "*"
+    },
+    "autoload": {
+        "psr-4": {
+            "PHPMailer\\PHPMailer\\": "vendor/phpmailer/phpmailer/src/"
+        }
+    }
+}

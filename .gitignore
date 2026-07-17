@@ -1,0 +1,9 @@
+debug_log.txt
+last_rfid.txt
+last_barcode.txt
+barcode_queue.txt
+vendor/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
