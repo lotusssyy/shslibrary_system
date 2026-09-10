@@ -1433,8 +1433,9 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
                 <?php endif; ?>
                 <?php if ($active_tab === 'phone_scanner'): ?>
                     <?php
-                    $server_ip = $_SERVER['SERVER_ADDR'] ?? gethostbyname(gethostname());
-                    $scanner_url = "https://{$server_ip}/shslibrary_system-main/pages/barcode_scanner.php";
+                    $server_host = $_SERVER['HTTP_HOST'] ?? ($_SERVER['SERVER_ADDR'] ?? gethostbyname(gethostname()));
+                    $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+                    $scanner_url = "{$scheme}://{$server_host}/shslibrary_system-main/pages/barcode_scanner.php";
                     ?>
                     <section class="admin-section">
                         <h2>Phone Barcode Scanner</h2>

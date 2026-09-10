@@ -7,3 +7,5 @@ vendor/
 *.swo
 .DS_Store
 Thumbs.db
+auto-sync.ps1
+.env

@@ -1,5 +1,6 @@
 <?php
 include '../includes/db.php';
+require_once __DIR__ . '/../includes/notification_service.php';
 session_start();
 
 if (!isset($_SESSION['user_id'])) {
@@ -67,7 +68,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['return_book'])) {
 
         $pdo->beginTransaction();
         $transaction_query = $pdo->prepare("
-            SELECT t.id, t.book_id, b.title
+            SELECT t.id, t.book_id, t.user_id, b.title
             FROM transactions t
             JOIN books b ON t.book_id = b.id
             WHERE t.id = ? AND t.action = 'BORROW' AND t.returned_date IS NULL
@@ -82,6 +83,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['return_book'])) {
         $pdo->prepare("UPDATE transactions SET returned_date = NOW() WHERE id = ?")->execute([$transaction_id]);
         $pdo->prepare("UPDATE books SET available = LEAST(available + 1, total_quantity) WHERE id = ?")->execute([$transaction['book_id']]);
         $pdo->commit();
+
+        // Send return notification to student
+        $user_query = $pdo->prepare("SELECT email FROM users WHERE id = ?");
+        $user_query->execute([$transaction['user_id']]);
+        $student = $user_query->fetch(PDO::FETCH_ASSOC);
+        if ($student) {
+            sendTransactionNotification($pdo, $transaction['user_id'], $student['email'], $transaction['title'], 'returned', null);
+        }
 
         $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
         $_SESSION['borrowed_books_success_message'] = $transaction['title'] . " marked as returned.";

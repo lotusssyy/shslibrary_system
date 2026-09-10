@@ -11,34 +11,18 @@ error_reporting(E_ALL);
 // Set timezone to Philippine Time (PHT, UTC+8)
 date_default_timezone_set('Asia/Manila');
 
-// Get current time in PHT
-$currentHour = (int) date('H'); // Hour in 24-hour format (0-23)
-$currentMinute = (int) date('i'); // Minutes (0-59)
 $currentDate = date('Y-m-d');
-error_log("Current PHT: " . date('Y-m-d H:i:s'));
+error_log("Running overdue notifications at " . date('Y-m-d H:i:s') . " PHT");
 
-// Define target notification times in PHT (24-hour format)
-$targetTimes = [6, 17, 0]; // 6:00 AM, 5:00 PM, 12:00 AM
-
-// Check if current time matches one of the target times (within a 10-minute window)
-$isTargetTime = false;
-foreach ($targetTimes as $targetHour) {
-    if ($currentHour === $targetHour && $currentMinute <= 10) { // Run within first 10 minutes of the hour
-        $isTargetTime = true;
-        break;
-    }
-    // Special case for 12:00 AM (midnight transition)
-    if ($targetHour === 0 && $currentHour === 23 && $currentMinute >= 50) {
-        $isTargetTime = true; // Allow late execution for midnight
-    }
+// Helper: check if user was already notified about this book today
+function alreadyNotifiedToday(PDO $pdo, int $user_id, string $book_title, string $currentDate): bool {
+    $check = $pdo->prepare(
+        "SELECT COUNT(*) FROM notifications
+         WHERE user_id = ? AND message LIKE ? AND DATE(created_at) = ?"
+    );
+    $check->execute([$user_id, "%'$book_title'%", $currentDate]);
+    return (int)$check->fetchColumn() > 0;
 }
-
-if (!$isTargetTime) {
-    error_log("Not a target notification time. Exiting.");
-    exit; // Exit if not one of the target times
-}
-
-error_log("Sending notifications at " . date('Y-m-d H:i:s') . " PHT");
 
 // Query for books due today
 $query_today = $pdo->prepare("SELECT t.user_id, u.email, b.title, t.due_date, b.genre 
@@ -81,6 +65,11 @@ foreach ($due_today as $transaction) {
     $due_date = $transaction['due_date'];
     $genre = $transaction['genre'];
 
+    if (alreadyNotifiedToday($pdo, $user_id, $book_title, $currentDate)) {
+        error_log("Skipping duplicate due-today notification for $email / '$book_title'");
+        continue;
+    }
+
     $message = "Your borrowed book '$book_title' (Genre: $genre) is due today ($due_date). Please return it to avoid penalties.";
     $notice_query = $pdo->prepare("INSERT INTO notifications (user_id, message, read_status, created_at) VALUES (?, ?, 0, NOW())");
     $notice_query->execute([$user_id, $message]);
@@ -96,6 +85,11 @@ foreach ($due_tomorrow as $transaction) {
     $due_date = $transaction['due_date'];
     $genre = $transaction['genre'];
 
+    if (alreadyNotifiedToday($pdo, $user_id, $book_title, $currentDate)) {
+        error_log("Skipping duplicate due-tomorrow notification for $email / '$book_title'");
+        continue;
+    }
+
     $message = "Reminder: Your borrowed book '$book_title' (Genre: $genre) is due tomorrow ($due_date). Please plan to return it.";
     $notice_query = $pdo->prepare("INSERT INTO notifications (user_id, message, read_status, created_at) VALUES (?, ?, 0, NOW())");
     $notice_query->execute([$user_id, $message]);
@@ -110,6 +104,11 @@ foreach ($overdue_books as $transaction) {
     $book_title = $transaction['title'];
     $due_date = $transaction['due_date'];
     $genre = $transaction['genre'];
+
+    if (alreadyNotifiedToday($pdo, $user_id, $book_title, $currentDate)) {
+        error_log("Skipping duplicate overdue notification for $email / '$book_title'");
+        continue;
+    }
 
     $overdue_days = floor((strtotime('now') - strtotime($due_date)) / (60 * 60 * 24));
     $message = "Your borrowed book '$book_title' (Genre: $genre) is overdue since $due_date ($overdue_days day(s) late). Please return it immediately to avoid penalties.";

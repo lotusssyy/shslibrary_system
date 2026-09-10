@@ -1,4 +1,31 @@
 <?php
+// Load .env file into environment variables (if not already set)
+function loadEnv(string $path): void {
+    if (!file_exists($path) || getenv('SMTP_USERNAME') !== false) {
+        return;
+    }
+    $lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    foreach ($lines as $line) {
+        $line = trim($line);
+        if ($line === '' || $line[0] === '#') {
+            continue;
+        }
+        $parts = explode('=', $line, 2);
+        if (count($parts) !== 2) {
+            continue;
+        }
+        $key = trim($parts[0]);
+        $value = trim($parts[1], " \t\n\r\0\x0B\"'");
+        if (!getenv($key)) {
+            putenv("$key=$value");
+            $_ENV[$key] = $value;
+        }
+    }
+}
+
+$envPath = __DIR__ . '/../.env';
+loadEnv($envPath);
+
 $host = '127.0.0.1';
 $username = 'root';
 $password = '';
